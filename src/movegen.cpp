@@ -9,23 +9,11 @@
 #include "bitboard.h"
 #include "nnue.h"
 
-const char* SQstr[SQ_NUM] = {
-		"a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1",
-		"a2", "b2", "c2", "d2", "e2", "f2", "g2", "h2",
-		"a3", "b3", "c3", "d3", "e3", "f3", "g3", "h3",
-		"a4", "b4", "c4", "d4", "e4", "f4", "g4", "h4",
-		"a5", "b5", "c5", "d5", "e5", "f5", "g5", "h5",
-		"a6", "b6", "c6", "d6", "e6", "f6", "g6", "h6",
-		"a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7",
-		"a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8"
-};
-
-const char* Promostr = "-nbrq-";
-
 namespace Seraphina
 {
-	void makemove(Board& board, const Move& move, bool update = true)
+	void makemove(Board& board, const Move& move, bool update)
 	{
+		board.addBoardInfo();
 		BoardInfo history = *board.getBoardInfo();
 		Square from = getFrom(move);
 		Square to = getTo(move);
@@ -35,106 +23,110 @@ namespace Seraphina
 
 		board.setFiftyIncremental();
 
-		(mt == MoveType::CAPTURE
-			|| mt == MoveType::ENPASSNT
-			|| mt == MoveType::PROMOTION_CAPTURE)
-			? board.replacePiece(to, pt)
-			: board.setPiece(to, pt);
-
-		if (mt == MoveType::SHORT_CASTLE || mt == MoveType::LONG_CASTLE)
+		if (getpiece(pt) == PieceList::PAWN)
 		{
-			board.castling &= board.castling_rights[from];
-			board.castling &= board.castling_rights[to];
-		}
+			board.resetFifty();
 
-		/*
-		board.FlipPieceBB(pt, from, to);
-		board.FlipOccBB(pov, from, to);
-		board.FlipOccBB(Color::NO_COLOR, from, to);
-		*/
-
-		if (mt == MoveType::NORMAL)
-		{
-			board.removePiece(from);
-			board.setPiece(to, pt);
-
-			if (getpiece(pt) == PieceList::PAWN)
+			if (mt == MoveType::NORMAL)
 			{
-				board.setFifty(0);
+				board.removePiece(from);
+				board.setPiece(to, pt);
+			}
+
+			if (mt == MoveType::CAPTURE)
+			{
+				board.getBoardInfo()->capture = board.getBoard(to);
+				board.removePiece(from);
+				board.replacePiece(to, pt);
+
+				board.removeCount(getCaptured(move));
+				board.removeCountValues(getCaptured(move));
+			}
+
+			if (mt == ENPASSNT)
+			{
+				Direction push = (pov == Color::WHITE ? Direction::NORTH : Direction::SOUTH);
+
+				if ((from ^ to) == 16 && (Bitboards::getPawnAttacks(pov, (to - push)) & board.getPieceBB(makepiece(~pov, PieceList::PAWN))))
+				{
+					history.ENPASSNT = to - push;
+
+					board.removePiece(from);
+					board.replacePiece(history.ENPASSNT, pt);
+
+					board.removeCount(getCaptured(move));
+					board.removeCountValues(getCaptured(move));
+				}
+			}
+
+			if (mt == MoveType::PROMOTION)
+			{
+				board.removePiece(from);
+				board.setPiece(to, getCapPromo(move));
+			}
+
+			if (mt == MoveType::PROMOTION_CAPTURE)
+			{
+				board.getBoardInfo()->capture = board.getBoard(to);
+				board.removePiece(from);
+				board.replacePiece(to, getCapPromo(move));
+
+				board.removeCount(board.getBoardInfo()->capture);
+				board.removeCountValues(board.getBoardInfo()->capture);
+				board.addCount(getCapPromo(move));
+				board.addCountValues(getCapPromo(move));
 			}
 		}
-
-		if (mt == MoveType::SHORT_CASTLE)
+		else
 		{
-			if (pov == Color::WHITE)
+			if (mt == MoveType::NORMAL)
 			{
-				/*
-				board.FlipPieceBB(PieceType::WHITE_ROOK, Square::SQ_H1, Square::SQ_F1);
-				board.FlipOccBB(pov, Square::SQ_H1, Square::SQ_F1);
-				board.FlipOccBB(Color::NO_COLOR, Square::SQ_H1, Square::SQ_F1);
+				board.removePiece(from);
+				board.setPiece(to, pt);
+			}
 
-				if (board.getBoardInfo()->chess960)
+			if (mt == MoveType::SHORT_CASTLE)
+			{
+				board.castling &= board.castling_rights[from];
+				board.castling &= board.castling_rights[to];
+
+				if (pov == Color::WHITE)
 				{
+					board.setPiece(Square::SQ_F1, PieceType::WHITE_ROOK);
 					board.removePiece(Square::SQ_H1);
 				}
-				*/
-
-				board.setPiece(Square::SQ_F1, PieceType::WHITE_ROOK);
-				board.removePiece(Square::SQ_H1);
+				else
+				{
+					board.setPiece(Square::SQ_F8, PieceType::BLACK_ROOK);
+					board.removePiece(Square::SQ_H8);
+				}
 			}
-			else
+
+			if (mt == MoveType::LONG_CASTLE)
 			{
-				board.setPiece(Square::SQ_F8, PieceType::BLACK_ROOK);
-				board.removePiece(Square::SQ_H8);
-			}
-		}
+				board.castling &= board.castling_rights[from];
+				board.castling &= board.castling_rights[to];
 
-		if (mt == MoveType::LONG_CASTLE)
-		{
-			if (pov == Color::WHITE)
+				if (pov == Color::WHITE)
+				{
+					board.setPiece(Square::SQ_D1, PieceType::WHITE_ROOK);
+					board.removePiece(Square::SQ_A1);
+				}
+				else
+				{
+					board.setPiece(Square::SQ_D8, PieceType::WHITE_ROOK);
+					board.removePiece(Square::SQ_A8);
+				}
+			}
+
+			if (mt == MoveType::CAPTURE)
 			{
-				board.setPiece(Square::SQ_D1, PieceType::WHITE_ROOK);
-				board.removePiece(Square::SQ_A1);
+				board.getBoardInfo()->capture = board.getBoard(to);
+				board.removePiece(from);
+				board.replacePiece(to, pt);
+
+				board.resetFifty();
 			}
-			else
-			{
-				board.setPiece(Square::SQ_D8, PieceType::WHITE_ROOK);
-				board.removePiece(Square::SQ_A8);
-			}
-		}
-
-		if (mt == MoveType::CAPTURE || mt == MoveType::PROMOTION_CAPTURE)
-		{
-			board.getBoardInfo()->capture = board.getBoard(to);
-			board.removePiece(from);
-			board.removePiece(to);
-			board.setPiece(to, (mt == MoveType::PROMOTION_CAPTURE) ? getCapPromo(move) : pt);
-
-			board.setFifty(0);
-		}
-
-		if (mt == MoveType::ENPASSNT)
-		{
-			int ENPASSNT = to - (pov == Color::WHITE ? Direction::NORTH : Direction::SOUTH);
-
-			if (Bitboards::getPawnAttacks(pov, (Square)ENPASSNT) & board.getPieceBB(makepiece((Color)~pov, PieceList::PAWN)))
-			{
-				history.ENPASSNT = ENPASSNT;
-			}
-
-			board.removePiece(from);
-			board.removePiece((Square)ENPASSNT);
-			board.setPiece(to, pt);
-
-			board.setFifty(0);
-		}
-
-		if (mt == MoveType::PROMOTION)
-		{
-			board.removePiece(from);
-			board.setPiece(to, getCapPromo(move));
-
-			board.setFifty(0);
 		}
 
 		history.repetition = 0;
@@ -152,13 +144,13 @@ namespace Seraphina
 			}
 		}
 
-		board.setPOV((Color)(pov ^ 1));
+		board.setPOV((Color)(~pov));
 		board.setMoveNumIncremental();
 		board.setpliesFromNullIncremental();
 		board.setHistoryIncremental(history);
 		board.updateZobrist(move);
 
-		board.setCPK();
+		board.setCBP();
 		board.setThreats();
 
 		if (update)
@@ -174,8 +166,8 @@ namespace Seraphina
 		Square to = getTo(move);
 		PieceType pt = getPieceType(move);
 		MoveType mt = getMoveType(move);
-		int pov = board.currPOV();
-		int prevPOV = pov ^ 1;
+		Seraphina::Color pov = board.currPOV();
+		int prevPOV = ~pov;
 		board.setPOV((Color)prevPOV);
 		board.acc--;
 		board.undoMoveNumIncremental();
@@ -216,61 +208,83 @@ namespace Seraphina
 			}
 		}
 
-		if (mt == MoveType::CAPTURE || mt == MoveType::PROMOTION_CAPTURE)
+		if (mt == MoveType::CAPTURE)
 		{
-			board.removePiece(to);
+			Seraphina::PieceType captured = getCaptured(move);
+
+			board.replacePiece(to, captured);
 			board.setPiece(from, pt);
-			board.setPiece(to, (PieceType)history.capture);
+
+			board.addCount(captured);
+			board.addCountValues(captured);
 		}
 
 		if (mt == MoveType::ENPASSNT)
 		{
-			board.removePiece((Square)history.ENPASSNT);
+			Seraphina::PieceType captured = getCaptured(move);
+
+			board.replacePiece(history.ENPASSNT, makepiece(pov, PieceList::PAWN));
 			board.setPiece(from, pt);
-			board.setPiece((Square)history.ENPASSNT, makepiece((Color)pov, PieceList::PAWN));
+
+			board.addCount(captured);
+			board.addCountValues(captured);
 		}
 
 		if (mt == MoveType::PROMOTION)
 		{
 			board.removePiece(to);
 			board.setPiece(from, pt);
+
+			board.removeCount(getCapPromo(move));
+			board.removeCountValues(getCapPromo(move));
+			board.addCount(pt);
+			board.addCountValues(pt);
+		}
+
+		if (mt == MoveType::PROMOTION_CAPTURE)
+		{
+			Seraphina::PieceType captured = getCaptured(move);
+
+			board.replacePiece(to, captured);
+			board.setPiece(from, pt);
+
+			board.removeCount(captured);
+			board.removeCountValues(captured);
+			board.addCount(pt);
+			board.addCountValues(pt);
+
+			board.addCount(history.capture);
+			board.addCountValues(history.capture);
 		}
 	}
 
-	inline char movetoString(Board& board, const Move& move)
+	std::string movetoString(Board& board, const Move& move)
 	{
-		static char output[6];
 		Square from = getFrom(move);
 		Square to = getTo(move);
 		MoveType mt = getMoveType(move);
 
-		if (board.isChess960() && (mt == MoveType::SHORT_CASTLE || mt == MoveType::LONG_CASTLE))
+		if (move == 0)
 		{
-			if (board.currPOV() == Color::WHITE)
-			{
-				mt == MoveType::SHORT_CASTLE
-					? to = Square::SQ_F1
-					: to = Square::SQ_D1;
-			}
-			else
-			{
-				mt == MoveType::SHORT_CASTLE
-					? to = Square::SQ_F8
-					: to = Square::SQ_D8;
-			}
+			return "0000";
 		}
+
+		if ((mt == MoveType::SHORT_CASTLE || mt == MoveType::LONG_CASTLE)
+			&& board.isChess960() == false)
+		{
+			to = makesquare(to > from ? File::FILE_G : File::FILE_C, getfile(from));
+		}
+
+		std::string str = Seraphina::Bitboards::squaretostr(from) + Seraphina::Bitboards::squaretostr(to);
 
 		if (mt == MoveType::PROMOTION || mt == MoveType::PROMOTION_CAPTURE)
 		{
-			sprintf(output, "%s%s%c", SQstr[from], SQstr[to], Promostr[getpiece(getCapPromo(move))]);
+			str += (char)tolower(piecetochar(getCapPromo(move)));
 		}
-		else
-		{
-			sprintf(output, "%s%s", SQstr[from], SQstr[to]);
-		}
+
+		return str;
 	}
 	
-	// Inspired by Berserk
 	bool isPseudoLegal(Board& board, const Move& move)
 	{
 		Color pov = board.currPOV();
@@ -377,7 +391,7 @@ namespace Seraphina
 
 		if (mt == MoveType::PROMOTION)
 		{
-			if (Bitboards::popcount(board.getCheckers()) > 1)
+			if (Bitboards::more_than_one(board.getCheckers()))
 			{
 				return false;
 			}
@@ -403,15 +417,12 @@ namespace Seraphina
 				return false;
 			}
 
-			if (mt != MoveType::ENPASSNT)
+			if (!(Bitboards::getPawnAttacks(pov, from) & board.getoccBB((Color)(~pov)) & to)
+				&& !((from + (pov == Color::WHITE ? Direction::NORTH : Direction::SOUTH) == to) && board.getBoard(to) == PieceType::NO_PIECETYPE)
+				&& !((from + ((pov == Color::WHITE ? Direction::NORTH : Direction::SOUTH) << 1) == to)
+					&& ((from ^ (pov * 7)) == 1) && board.getBoard(to) == PieceType::NO_PIECETYPE && board.getBoard((Square)((U64)to - (pov == Color::WHITE ? Direction::NORTH : Direction::SOUTH))) == PieceType::NO_PIECETYPE))
 			{
-				if (!(Bitboards::getPawnAttacks(pov, from) & board.getoccBB((Color)(pov ^ 1)) & to)
-					&& !((from + (pov == Color::WHITE ? Direction::NORTH : Direction::SOUTH) == to) && board.getBoard(to) == PieceType::NO_PIECETYPE)
-					&& !((from + ((pov == Color::WHITE ? Direction::NORTH : Direction::SOUTH) << 1) == to)
-						&& ((from ^ (pov * 7)) == 1) && board.getBoard(to) == PieceType::NO_PIECETYPE && board.getBoard((Square)((U64)to - (pov == Color::WHITE ? Direction::NORTH : Direction::SOUTH))) == PieceType::NO_PIECETYPE))
-				{
-					return false;
-				}
+				return false;
 			}
 		}
 		else if (!(Bitboards::getPieceAttacks(from, board.getoccBB(Color::NO_COLOR), p) & to))
@@ -419,10 +430,20 @@ namespace Seraphina
 			return false;
 		}
 
-		if ((mt == MoveType::CAPTURE || mt == MoveType::PROMOTION_CAPTURE) && mt != MoveType::ENPASSNT
-			&& board.getBoard(to) == PieceType::NO_PIECETYPE)
+		if (mt == MoveType::CAPTURE || mt == MoveType::PROMOTION_CAPTURE)
 		{
-			return false;
+			if (board.getBoardInfo()->ENPASSNT != Square::NO_SQ)
+			{
+				if (to != board.getBoardInfo()->ENPASSNT)
+				{
+					return false;
+				}
+			}
+
+			if (board.getBoard(to) == PieceType::NO_PIECETYPE)
+			{
+				return false;
+			}
 		}
 
 		if (mt != MoveType::CAPTURE && board.getBoard(to) != PieceType::NO_PIECETYPE)
@@ -430,12 +451,7 @@ namespace Seraphina
 			return false;
 		}
 
-		if (mt == MoveType::ENPASSNT && to != board.getBoardInfo()->ENPASSNT)
-		{
-			return false;
-		}
-
-		if (p == PieceList::KING && board.isAttacked(pov, to))
+		if (p == PieceList::KING)
 		{
 			return false;
 		}
@@ -444,7 +460,7 @@ namespace Seraphina
 		{
 			if (p != PieceList::KING)
 			{
-				if (Bitboards::popcount(board.getCheckers()) > 1)
+				if (Bitboards::more_than_one(board.getCheckers()))
 				{
 					return false;
 				}
@@ -464,271 +480,262 @@ namespace Seraphina
 	}
 }
 
-template <Seraphina::PieceList p>
-void MoveList::generatebyPieceType(Board& board, Seraphina::MoveType mt, Bitboard& opts)
+void MoveList::generatePawn(Board& board, Seraphina::MoveType mt, Bitboard& target, Bitboard& checkers)
 {
-	if (p == Seraphina::PieceList::PAWN)
+	Seraphina::Color pov = board.currPOV();
+	int xpov = ~pov;
+	Seraphina::PieceType pt = Seraphina::makepiece(pov, Seraphina::PieceList::PAWN);
+	Seraphina::Direction push = (pov == Seraphina::Color::WHITE ? Seraphina::Direction::NORTH : Seraphina::Direction::SOUTH);
+	Seraphina::Direction push2 = (Seraphina::Direction)(pov == Seraphina::Color::WHITE ? (Seraphina::Direction::NORTH << 1) : (Seraphina::Direction::SOUTH * 2));
+	Seraphina::Direction left = (pov == Seraphina::Color::WHITE ? Seraphina::Direction::NORTH_WEST : Seraphina::Direction::SOUTH_EAST);
+	Seraphina::Direction right = (pov == Seraphina::Color::WHITE ? Seraphina::Direction::NORTH_EAST : Seraphina::Direction::SOUTH_WEST);
+
+	Bitboard TR7 = (pov == Seraphina::Color::WHITE ? Rank7BB : Rank2BB);
+	Bitboard TR3 = (pov == Seraphina::Color::WHITE ? Rank3BB : Rank6BB);
+
+	Bitboard pawn = board.getPieceBB(pt) & ~TR7;
+	Bitboard ppawn = board.getPieceBB(pt) & TR7;
+
+	Bitboard opts = checkers ? board.getCheckers() : board.getoccBB(xpov);
+
+	if (mt == Seraphina::MoveType::NORMAL)
 	{
-		// Generate all pawn moves
-		if (board.currPOV() == Seraphina::Color::WHITE)
+		Bitboard p1 = Seraphina::Bitboards::shift(push, pawn) & ~board.getoccBB(Seraphina::Color::NO_COLOR);
+		Bitboard p2 = Seraphina::Bitboards::shift(push, p1 & TR3) & ~board.getoccBB(Seraphina::Color::NO_COLOR);
+
+		if (checkers)
 		{
-			if (mt == Seraphina::MoveType::NORMAL)
+			p1 &= target;
+			p2 &= target;
+		}
+
+		while (p1)
+		{
+			Seraphina::Square to = Seraphina::Bitboards::poplsb(p1);
+			moves.emplace_back(setMove((to - push), to, pt, mt));
+		}
+
+		while (p2)
+		{
+			Seraphina::Square to = Seraphina::Bitboards::poplsb(p2);
+			moves.emplace_back(setMove((to - push2), to, pt, mt));
+		}
+	}
+
+	else if (mt == Seraphina::MoveType::CAPTURE)
+	{
+		Bitboard c1 = Seraphina::Bitboards::shift(right, pawn) & opts;
+		Bitboard c2 = Seraphina::Bitboards::shift(left, pawn) & opts;
+
+		while (c1)
+		{
+			Seraphina::Square to = Seraphina::Bitboards::poplsb(c1);
+			moves.emplace_back(setMove((to - right), to, pt, mt, board.getBoard(to)));
+		}
+
+		while (c2)
+		{
+			Seraphina::Square to = Seraphina::Bitboards::poplsb(c2);
+			moves.emplace_back(setMove((to - left), to, pt, mt, board.getBoard(to)));
+		}
+
+		if (board.getBoardInfo()->ENPASSNT != Seraphina::Square::NO_SQ)
+		{
+			int ep = board.getBoardInfo()->ENPASSNT;
+
+			if (!checkers && !(target & (ep + push)))
 			{
-				Bitboard pawn = board.getPieceBB(Seraphina::PieceType::WHITE_PAWN);
-				Bitboard target = Seraphina::Bitboards::shift<Seraphina::Direction::NORTH>(pawn) & ~board.getoccBB(Seraphina::Color::NO_COLOR);
-				Bitboard dp = Seraphina::Bitboards::shift<Seraphina::Direction::NORTH>(target) & ~board.getoccBB(Seraphina::Color::NO_COLOR);
+				Bitboard e = pawn & Seraphina::Bitboards::getPawnAttacks(xpov, ep);
 
-				while (target)
+				while (e)
 				{
-					Seraphina::Square to = Seraphina::Bitboards::poplsb(target);
-					moves.emplace_back(setMove((Seraphina::Square)(to - Seraphina::Direction::NORTH), to, Seraphina::PieceType::WHITE_PAWN, mt));
-				}
-
-				while (dp)
-				{
-					Seraphina::Square to = Seraphina::Bitboards::poplsb(dp);
-					moves.emplace_back(setMove((Seraphina::Square)(to - (Seraphina::Direction::NORTH << 1)), to, Seraphina::PieceType::WHITE_PAWN, mt));
+					moves.emplace_back(setMove(Seraphina::Bitboards::poplsb(e), ep, pt, Seraphina::MoveType::ENPASSNT, board.getBoard(ep)));
 				}
 			}
+		}
+	}
 
-			else if (mt == Seraphina::MoveType::CAPTURE)
+	else
+	{
+		Bitboard promo = Seraphina::Bitboards::shift(push, ppawn) & ~board.getoccBB(Seraphina::Color::NO_COLOR);
+		Bitboard cp1 = Seraphina::Bitboards::shift(right, ppawn) & opts;
+		Bitboard cp2 = Seraphina::Bitboards::shift(left, ppawn) & opts;
+
+		Seraphina::PieceType pn = Seraphina::makepiece(pov, Seraphina::PieceList::KNIGHT);
+		Seraphina::PieceType pb = Seraphina::makepiece(pov, Seraphina::PieceList::BISHOP);
+		Seraphina::PieceType pr = Seraphina::makepiece(pov, Seraphina::PieceList::ROOK);
+		Seraphina::PieceType pq = Seraphina::makepiece(pov, Seraphina::PieceList::QUEEN);
+
+		if (checkers)
+		{
+			promo &= target;
+		}
+
+		while (promo)
+		{
+			Seraphina::Square to = Seraphina::Bitboards::poplsb(promo);
+			int from = (to - push);
+
+			moves.emplace_back(setMove(from, to, pt, Seraphina::MoveType::PROMOTION, pn));
+			moves.emplace_back(setMove(from, to, pt, Seraphina::MoveType::PROMOTION, pb));
+			moves.emplace_back(setMove(from, to, pt, Seraphina::MoveType::PROMOTION, pr));
+			moves.emplace_back(setMove(from, to, pt, Seraphina::MoveType::PROMOTION, pq));
+		}
+
+		while (cp1)
+		{
+			Seraphina::Square to = Seraphina::Bitboards::poplsb(cp1);
+			int from = (to - right);
+
+			moves.emplace_back(setMove(from, to, pt, Seraphina::MoveType::PROMOTION_CAPTURE, pn));
+			moves.emplace_back(setMove(from, to, pt, Seraphina::MoveType::PROMOTION_CAPTURE, pb));
+			moves.emplace_back(setMove(from, to, pt, Seraphina::MoveType::PROMOTION_CAPTURE, pr));
+			moves.emplace_back(setMove(from, to, pt, Seraphina::MoveType::PROMOTION_CAPTURE, pq));
+		}
+
+		while (cp2)
+		{
+			Seraphina::Square to = Seraphina::Bitboards::poplsb(cp2);
+			int from = (to - left);
+
+			moves.emplace_back(setMove(from, to, pt, Seraphina::MoveType::PROMOTION_CAPTURE, pn));
+			moves.emplace_back(setMove(from, to, pt, Seraphina::MoveType::PROMOTION_CAPTURE, pb));
+			moves.emplace_back(setMove(from, to, pt, Seraphina::MoveType::PROMOTION_CAPTURE, pr));
+			moves.emplace_back(setMove(from, to, pt, Seraphina::MoveType::PROMOTION_CAPTURE, pq));
+		}
+	}
+}
+
+void MoveList::generateKing(Board& board, Seraphina::MoveType mt, Bitboard& target, Bitboard& checkers)
+{
+	Seraphina::Color pov = board.currPOV();
+	Seraphina::PieceType pt = Seraphina::makepiece(pov, Seraphina::PieceList::KING);
+	Seraphina::Square KingSq = board.getKingSquare(pov);
+	Bitboard b = Seraphina::Bitboards::getKingAttacks(board.getKingSquare(pov))
+		& (checkers ? ~board.getoccBB(pov) : target);
+
+	while (b)
+	{
+		Seraphina::Square to = Seraphina::Bitboards::poplsb(b);
+
+		if (mt == Seraphina::MoveType::NORMAL)
+		{
+			moves.emplace_back(setMove(KingSq, to, pt, mt));
+		}
+
+		if (mt == Seraphina::MoveType::CAPTURE)
+		{
+			moves.emplace_back(setMove(KingSq, to, pt, mt, board.getBoard(to)));
+		}
+	}
+
+	if ((mt == Seraphina::MoveType::NORMAL && !checkers)
+		&& board.getCastlingRights(pov & Seraphina::CastlingType::ALL_CASTLING))
+	{
+		if (pov == Seraphina::Color::WHITE)
+		{
+			if (board.getCastlingRights(Seraphina::CastlingType::WKSC))
 			{
-				Bitboard pawn = board.getPieceBB(Seraphina::PieceType::WHITE_PAWN) & ~Rank7BB;
-				Bitboard target = Seraphina::Bitboards::shift<Seraphina::Direction::NORTH_EAST>(pawn) & board.getoccBB(Seraphina::Color::BLACK) & opts;
-				Bitboard target2 = Seraphina::Bitboards::shift<Seraphina::Direction::NORTH_WEST>(pawn) & board.getoccBB(Seraphina::Color::BLACK) & opts;
+				Bitboard ksc = board.getSQbtw(KingSq, Seraphina::Square::SQ_G1);
+				Bitboard rsc = board.getSQbtw(Seraphina::Square::SQ_H1, Seraphina::Square::SQ_F1);
+				Bitboard btw = ksc | rsc;
 
-				while (target)
+				if (!((board.getoccBB(Seraphina::Color::NO_COLOR)
+					^ Seraphina::Bitboards::bit(KingSq)
+					^ Seraphina::Bitboards::bit(Seraphina::Square::SQ_H1))
+					& btw))
 				{
-					Seraphina::Square to = Seraphina::Bitboards::poplsb(target);
-					moves.emplace_back(setMove((Seraphina::Square)(to + Seraphina::Direction::SOUTH_WEST), to, Seraphina::PieceType::WHITE_PAWN, mt, board.getBoard(to)));
-				}
-
-				while (target2)
-				{
-					Seraphina::Square to = Seraphina::Bitboards::poplsb(target2);
-					moves.emplace_back(setMove((Seraphina::Square)(to + Seraphina::Direction::SOUTH_EAST), to, Seraphina::PieceType::WHITE_PAWN, mt, board.getBoard(to)));
-				}
-
-				if (board.getBoardInfo()->ENPASSNT)
-				{
-					Bitboard movers = Seraphina::Bitboards::getPawnAttacks(Seraphina::Color::WHITE, (Seraphina::Square)board.getBoardInfo()->ENPASSNT) & pawn;
-
-					while (movers)
+					if (!(board.getThreatened() & ksc))
 					{
-						Seraphina::Square from = Seraphina::Bitboards::poplsb(movers);
-						moves.emplace_back(setMove(from, (Seraphina::Square)board.getBoardInfo()->ENPASSNT, Seraphina::PieceType::WHITE_PAWN, mt, Seraphina::PieceType::BLACK_PAWN));
+						moves.emplace_back(setMove(Seraphina::Square::SQ_E1, Seraphina::Square::SQ_G1, pt, Seraphina::MoveType::SHORT_CASTLE));
 					}
 				}
 			}
 
-			else
+			if (board.getCastlingRights(Seraphina::CastlingType::WKLC))
 			{
-				Bitboard pawn = board.getPieceBB(Seraphina::PieceType::WHITE_PAWN) & Rank7BB;
-				Bitboard ptarget = Seraphina::Bitboards::shift<Seraphina::Direction::NORTH>(pawn) & ~board.getoccBB(Seraphina::Color::NO_COLOR) & opts;
-				Bitboard target = Seraphina::Bitboards::shift<Seraphina::Direction::NORTH_EAST>(pawn) & board.getoccBB(Seraphina::Color::BLACK) & opts;
-				Bitboard target2 = Seraphina::Bitboards::shift<Seraphina::Direction::NORTH_WEST>(pawn) & board.getoccBB(Seraphina::Color::BLACK) & opts;
+				Bitboard klc = board.getSQbtw(KingSq, Seraphina::Square::SQ_C1);
+				Bitboard rlc = board.getSQbtw(Seraphina::Square::SQ_A1, Seraphina::Square::SQ_D1);
+				Bitboard btw = klc | rlc;
 
-				while (ptarget)
+				if (!((board.getoccBB(Seraphina::Color::NO_COLOR)
+					^ Seraphina::Bitboards::bit(KingSq)
+					^ Seraphina::Bitboards::bit(Seraphina::Square::SQ_A1))
+					& btw))
 				{
-					Seraphina::Square to = Seraphina::Bitboards::poplsb(ptarget);
-					moves.emplace_back(setMove((Seraphina::Square)(to + Seraphina::Direction::SOUTH), to, Seraphina::PieceType::WHITE_PAWN, Seraphina::MoveType::PROMOTION, Seraphina::PieceType::WHITE_KNIGHT));
-					moves.emplace_back(setMove((Seraphina::Square)(to + Seraphina::Direction::SOUTH), to, Seraphina::PieceType::WHITE_PAWN, Seraphina::MoveType::PROMOTION, Seraphina::PieceType::WHITE_BISHOP));
-					moves.emplace_back(setMove((Seraphina::Square)(to + Seraphina::Direction::SOUTH), to, Seraphina::PieceType::WHITE_PAWN, Seraphina::MoveType::PROMOTION, Seraphina::PieceType::WHITE_ROOK));
-					moves.emplace_back(setMove((Seraphina::Square)(to + Seraphina::Direction::SOUTH), to, Seraphina::PieceType::WHITE_PAWN, Seraphina::MoveType::PROMOTION, Seraphina::PieceType::WHITE_QUEEN));
-				}
-
-				while (target)
-				{
-					Seraphina::Square to = Seraphina::Bitboards::poplsb(target);
-					moves.emplace_back(setMove((Seraphina::Square)(to + Seraphina::Direction::SOUTH_WEST), to, Seraphina::PieceType::WHITE_PAWN, Seraphina::MoveType::PROMOTION_CAPTURE, Seraphina::PieceType::WHITE_KNIGHT));
-					moves.emplace_back(setMove((Seraphina::Square)(to + Seraphina::Direction::SOUTH_WEST), to, Seraphina::PieceType::WHITE_PAWN, Seraphina::MoveType::PROMOTION_CAPTURE, Seraphina::PieceType::WHITE_BISHOP));
-					moves.emplace_back(setMove((Seraphina::Square)(to + Seraphina::Direction::SOUTH_WEST), to, Seraphina::PieceType::WHITE_PAWN, Seraphina::MoveType::PROMOTION_CAPTURE, Seraphina::PieceType::WHITE_ROOK));
-					moves.emplace_back(setMove((Seraphina::Square)(to + Seraphina::Direction::SOUTH_WEST), to, Seraphina::PieceType::WHITE_PAWN, Seraphina::MoveType::PROMOTION_CAPTURE, Seraphina::PieceType::WHITE_QUEEN));
-				}
-
-				while (target2)
-				{
-					Seraphina::Square to = Seraphina::Bitboards::poplsb(target2);
-					moves.emplace_back(setMove((Seraphina::Square)(to + Seraphina::Direction::SOUTH_EAST), to, Seraphina::PieceType::WHITE_PAWN, Seraphina::MoveType::PROMOTION_CAPTURE, Seraphina::PieceType::WHITE_KNIGHT));
-					moves.emplace_back(setMove((Seraphina::Square)(to + Seraphina::Direction::SOUTH_EAST), to, Seraphina::PieceType::WHITE_PAWN, Seraphina::MoveType::PROMOTION_CAPTURE, Seraphina::PieceType::WHITE_BISHOP));
-					moves.emplace_back(setMove((Seraphina::Square)(to + Seraphina::Direction::SOUTH_EAST), to, Seraphina::PieceType::WHITE_PAWN, Seraphina::MoveType::PROMOTION_CAPTURE, Seraphina::PieceType::WHITE_ROOK));
-					moves.emplace_back(setMove((Seraphina::Square)(to + Seraphina::Direction::SOUTH_EAST), to, Seraphina::PieceType::WHITE_PAWN, Seraphina::MoveType::PROMOTION_CAPTURE, Seraphina::PieceType::WHITE_QUEEN));
+					if (!(board.getThreatened() & klc))
+					{
+						moves.emplace_back(setMove(Seraphina::Square::SQ_E1, Seraphina::Square::SQ_C1, pt, Seraphina::MoveType::LONG_CASTLE));
+					}
 				}
 			}
 		}
 		else
 		{
-			if (mt == Seraphina::MoveType::NORMAL)
+			if (board.getCastlingRights(Seraphina::CastlingType::BKSC))
 			{
-				Bitboard pawn = board.getPieceBB(Seraphina::PieceType::BLACK_PAWN);
-				Bitboard target = Seraphina::Bitboards::shift<Seraphina::Direction::SOUTH>(pawn) & ~board.getoccBB(Seraphina::Color::NO_COLOR);
-				Bitboard dp = Seraphina::Bitboards::shift<Seraphina::Direction::SOUTH>(target) & ~board.getoccBB(Seraphina::Color::NO_COLOR);
+				Bitboard ksc = board.getSQbtw(KingSq, Seraphina::Square::SQ_G8);
+				Bitboard rsc = board.getSQbtw(Seraphina::Square::SQ_H8, Seraphina::Square::SQ_F8);
+				Bitboard btw = ksc | rsc;
 
-				while (target)
+				if (!((board.getoccBB(Seraphina::Color::NO_COLOR)
+					^ Seraphina::Bitboards::bit(KingSq)
+					^ Seraphina::Bitboards::bit(Seraphina::Square::SQ_H8))
+					& btw))
 				{
-					Seraphina::Square to = Seraphina::Bitboards::poplsb(target);
-					moves.emplace_back(setMove((Seraphina::Square)(to - Seraphina::Direction::SOUTH), to, Seraphina::PieceType::BLACK_PAWN, mt));
-				}
-
-				while (dp)
-				{
-					Seraphina::Square to = Seraphina::Bitboards::poplsb(dp);
-					moves.emplace_back(setMove((Seraphina::Square)(to + (Seraphina::Direction::NORTH << 1)), to, Seraphina::PieceType::BLACK_PAWN, mt));
-				}
-			}
-
-			else if (mt == Seraphina::MoveType::CAPTURE)
-			{
-				Bitboard pawn = board.getPieceBB(Seraphina::PieceType::BLACK_PAWN) & ~Rank2BB;
-				Bitboard target = Seraphina::Bitboards::shift<Seraphina::Direction::SOUTH_EAST>(pawn) & board.getoccBB(Seraphina::Color::WHITE) & opts;
-				Bitboard target2 = Seraphina::Bitboards::shift<Seraphina::Direction::SOUTH_WEST>(pawn) & board.getoccBB(Seraphina::Color::WHITE) & opts;
-
-				while (target)
-				{
-					Seraphina::Square to = Seraphina::Bitboards::poplsb(target);
-					moves.emplace_back(setMove((Seraphina::Square)(to + Seraphina::Direction::NORTH_WEST), to, Seraphina::PieceType::BLACK_PAWN, mt, board.getBoard(to)));
-				}
-
-				while (target2)
-				{
-					Seraphina::Square to = Seraphina::Bitboards::poplsb(target2);
-					moves.emplace_back(setMove((Seraphina::Square)(to + Seraphina::Direction::NORTH_EAST), to, Seraphina::PieceType::BLACK_PAWN, mt, board.getBoard(to)));
-				}
-			}
-
-			else if (mt == Seraphina::MoveType::ENPASSNT)
-			{
-				Bitboard pawn = board.getPieceBB(Seraphina::PieceType::BLACK_PAWN) & ~Rank2BB;
-
-				if (board.getBoardInfo()->ENPASSNT)
-				{
-					Bitboard movers = Seraphina::Bitboards::getPawnAttacks(Seraphina::Color::BLACK, (Seraphina::Square)board.getBoardInfo()->ENPASSNT) & pawn;
-
-					while (movers)
+					if (!(board.getThreatened() & ksc))
 					{
-						Seraphina::Square from = Seraphina::Bitboards::poplsb(movers);
-						moves.emplace_back(setMove(from, (Seraphina::Square)board.getBoardInfo()->ENPASSNT, Seraphina::PieceType::BLACK_PAWN, mt, Seraphina::PieceType::WHITE_PAWN));
+						moves.emplace_back(setMove(Seraphina::Square::SQ_E8, Seraphina::Square::SQ_G8, pt, Seraphina::MoveType::SHORT_CASTLE));
 					}
 				}
 			}
 
-			else
+			if (board.getCastlingRights(Seraphina::CastlingType::BKLC))
 			{
-				Bitboard pawn = board.getPieceBB(Seraphina::PieceType::BLACK_PAWN) & Rank7BB;
-				Bitboard ptarget = Seraphina::Bitboards::shift<Seraphina::Direction::SOUTH>(pawn) & ~board.getoccBB(Seraphina::Color::NO_COLOR) & opts;
-				Bitboard target = Seraphina::Bitboards::shift<Seraphina::Direction::SOUTH_EAST>(pawn) & board.getoccBB(Seraphina::Color::WHITE) & opts;
-				Bitboard target2 = Seraphina::Bitboards::shift<Seraphina::Direction::SOUTH_WEST>(pawn) & board.getoccBB(Seraphina::Color::WHITE) & opts;
+				Bitboard klc = board.getSQbtw(KingSq, Seraphina::Square::SQ_C8);
+				Bitboard rlc = board.getSQbtw(Seraphina::Square::SQ_A8, Seraphina::Square::SQ_D8);
+				Bitboard btw = klc | rlc;
 
-				while (ptarget)
+				if (!((board.getoccBB(Seraphina::Color::NO_COLOR)
+					^ Seraphina::Bitboards::bit(KingSq)
+					^ Seraphina::Bitboards::bit(Seraphina::Square::SQ_A8))
+					& btw))
 				{
-					Seraphina::Square to = Seraphina::Bitboards::poplsb(ptarget);
-					moves.emplace_back(setMove((Seraphina::Square)(to + Seraphina::Direction::NORTH), to, Seraphina::PieceType::BLACK_PAWN, Seraphina::MoveType::PROMOTION, Seraphina::PieceType::BLACK_KNIGHT));
-					moves.emplace_back(setMove((Seraphina::Square)(to + Seraphina::Direction::NORTH), to, Seraphina::PieceType::BLACK_PAWN, Seraphina::MoveType::PROMOTION, Seraphina::PieceType::BLACK_BISHOP));
-					moves.emplace_back(setMove((Seraphina::Square)(to + Seraphina::Direction::NORTH), to, Seraphina::PieceType::BLACK_PAWN, Seraphina::MoveType::PROMOTION, Seraphina::PieceType::BLACK_ROOK));
-					moves.emplace_back(setMove((Seraphina::Square)(to + Seraphina::Direction::NORTH), to, Seraphina::PieceType::BLACK_PAWN, Seraphina::MoveType::PROMOTION, Seraphina::PieceType::BLACK_QUEEN));
-				}
-
-				while (target)
-				{
-					Seraphina::Square to = Seraphina::Bitboards::poplsb(target);
-					moves.emplace_back(setMove((Seraphina::Square)(to + Seraphina::Direction::NORTH_WEST), to, Seraphina::PieceType::BLACK_PAWN, Seraphina::MoveType::PROMOTION_CAPTURE, Seraphina::PieceType::BLACK_KNIGHT));
-					moves.emplace_back(setMove((Seraphina::Square)(to + Seraphina::Direction::NORTH_WEST), to, Seraphina::PieceType::BLACK_PAWN, Seraphina::MoveType::PROMOTION_CAPTURE, Seraphina::PieceType::BLACK_BISHOP));
-					moves.emplace_back(setMove((Seraphina::Square)(to + Seraphina::Direction::NORTH_WEST), to, Seraphina::PieceType::BLACK_PAWN, Seraphina::MoveType::PROMOTION_CAPTURE, Seraphina::PieceType::BLACK_ROOK));
-					moves.emplace_back(setMove((Seraphina::Square)(to + Seraphina::Direction::NORTH_WEST), to, Seraphina::PieceType::BLACK_PAWN, Seraphina::MoveType::PROMOTION_CAPTURE, Seraphina::PieceType::BLACK_QUEEN));
-				}
-
-				while (target2)
-				{
-					Seraphina::Square to = Seraphina::Bitboards::poplsb(target2);
-					moves.emplace_back(setMove((Seraphina::Square)(to + Seraphina::Direction::NORTH_EAST), to, Seraphina::PieceType::BLACK_PAWN, Seraphina::MoveType::PROMOTION_CAPTURE, Seraphina::PieceType::BLACK_KNIGHT));
-					moves.emplace_back(setMove((Seraphina::Square)(to + Seraphina::Direction::NORTH_EAST), to, Seraphina::PieceType::BLACK_PAWN, Seraphina::MoveType::PROMOTION_CAPTURE, Seraphina::PieceType::BLACK_BISHOP));
-					moves.emplace_back(setMove((Seraphina::Square)(to + Seraphina::Direction::NORTH_EAST), to, Seraphina::PieceType::BLACK_PAWN, Seraphina::MoveType::PROMOTION_CAPTURE, Seraphina::PieceType::BLACK_ROOK));
-					moves.emplace_back(setMove((Seraphina::Square)(to + Seraphina::Direction::NORTH_EAST), to, Seraphina::PieceType::BLACK_PAWN, Seraphina::MoveType::PROMOTION_CAPTURE, Seraphina::PieceType::BLACK_QUEEN));
-				}
-			}
-		}
-	}
-	else
-	{
-		Seraphina::Color pov = board.currPOV();
-		Seraphina::PieceType pt = Seraphina::makepiece(pov, p);
-		U64 occ = board.getoccBB(Seraphina::Color::NO_COLOR);
-		Bitboard movers = board.getPieceBB(pt);
-
-		while (movers)
-		{
-			Seraphina::Square from = Seraphina::Bitboards::poplsb(movers);
-			Bitboard target = Seraphina::Bitboards::getPieceAttacks(from, occ, p) & opts;
-
-			if (mt == Seraphina::MoveType::NORMAL)
-			{
-				Bitboard targets = target & occ;
-
-				while (targets)
-				{
-					Seraphina::Square to = Seraphina::Bitboards::poplsb(targets);
-					moves.emplace_back(setMove(from, to, pt, mt, board.getBoard(to)));
-				}
-			}
-
-			if (mt == Seraphina::MoveType::CAPTURE)
-			{
-				Seraphina::Color xpov = (Seraphina::Color)(pov ^ 1);
-				Bitboard targets = target & ~board.getoccBB(xpov);
-
-				while (targets)
-				{
-					Seraphina::Square to = Seraphina::Bitboards::poplsb(targets);
-					moves.emplace_back(setMove(from, to, pt, mt, board.getBoard(to)));
+					if (!(board.getThreatened() & klc))
+					{
+						moves.emplace_back(setMove(Seraphina::Square::SQ_E8, Seraphina::Square::SQ_C8, pt, Seraphina::MoveType::LONG_CASTLE));
+					}
 				}
 			}
 		}
 	}
 }
 
-void MoveList::generateCastling(Board& board)
+template <Seraphina::PieceList p>
+void MoveList::generatebyPieceType(Board& board, Seraphina::MoveType mt, Bitboard& target)
 {
-	if (board.currPOV() == Seraphina::Color::WHITE)
+	Seraphina::Color pov = board.currPOV();
+	Seraphina::PieceType pt = Seraphina::makepiece(pov, p);
+	U64 occ = board.getoccBB(Seraphina::Color::NO_COLOR);
+	Bitboard bb = board.getPieceBB(pt);
+
+	while (bb)
 	{
-		Seraphina::Square from = Seraphina::Bitboards::lsb(board.getPieceBB(Seraphina::PieceType::WHITE_KING));
+		Seraphina::Square from = Seraphina::Bitboards::poplsb(bb);
+		Bitboard b = Seraphina::Bitboards::getPieceAttacks(from, occ, p) & target;
 
-		if (board.castling & Seraphina::CastlingType::WKSC)
+		while (b)
 		{
-			if (!board.isChecked(Seraphina::Color::WHITE) &&
-				!board.isAttacked(Seraphina::Color::WHITE, Seraphina::Square::SQ_G1))
+			Seraphina::Square to = Seraphina::Bitboards::poplsb(b);
+
+			if (mt == Seraphina::MoveType::NORMAL)
 			{
-				moves.emplace_back(setMove(from, (Seraphina::Square)(from + 2), Seraphina::PieceType::WHITE_KING, Seraphina::MoveType::SHORT_CASTLE));
+				moves.emplace_back(setMove(from, to, pt, mt));
 			}
-		}
 
-		if (board.castling & Seraphina::CastlingType::WKLC)
-		{
-			if (!board.isChecked(Seraphina::Color::WHITE) &&
-				!board.isAttacked(Seraphina::Color::WHITE, Seraphina::Square::SQ_C1))
+			if (mt == Seraphina::MoveType::CAPTURE)
 			{
-				moves.emplace_back(setMove(from, (Seraphina::Square)(from - 2), Seraphina::PieceType::WHITE_KING, Seraphina::MoveType::LONG_CASTLE));
-			}
-		}
-	}
-	else
-	{
-		Seraphina::Square from = Seraphina::Bitboards::lsb(board.getPieceBB(Seraphina::PieceType::BLACK_KING));
-
-		if (board.castling & Seraphina::CastlingType::BKSC)
-		{
-			if (!board.isChecked(Seraphina::Color::BLACK) &&
-				!board.isAttacked(Seraphina::Color::BLACK, Seraphina::Square::SQ_G8))
-			{
-				moves.emplace_back(setMove(from, (Seraphina::Square)(from + 2), Seraphina::PieceType::BLACK_KING, Seraphina::MoveType::SHORT_CASTLE));
-			}
-		}
-
-		if (board.castling & Seraphina::CastlingType::BKLC)
-		{
-			if (!board.isChecked(Seraphina::Color::BLACK) &&
-				!board.isAttacked(Seraphina::Color::BLACK, Seraphina::Square::SQ_C8))
-			{
-				moves.emplace_back(setMove(from, (Seraphina::Square)(from - 2), Seraphina::PieceType::BLACK_KING, Seraphina::MoveType::LONG_CASTLE));
+				moves.emplace_back(setMove(from, to, pt, mt, board.getBoard(to)));
 			}
 		}
 	}
@@ -737,31 +744,43 @@ void MoveList::generateCastling(Board& board)
 template<Seraphina::MoveType mt>
 void MoveList::generatePseudoLegal(Board& board)
 {
-	Bitboard opts = !board.getCheckers() ? -1ULL
-		: board.getSQbtw(Seraphina::Bitboards::lsb(board.getPieceBB(board.currPOV() == Seraphina::Color::WHITE
-			? Seraphina::PieceType::WHITE_KING : Seraphina::PieceType::BLACK_KING)),
-			Seraphina::Bitboards::lsb(board.getCheckers())) | board.getCheckers();
+	Seraphina::Color pov = board.currPOV();
+	int xpov = ~pov;
+	Bitboard checkers = board.getCheckers();
+	Bitboard target;
 
-	generatebyPieceType<Seraphina::PieceList::PAWN>(board, mt, opts);
-	generatebyPieceType<Seraphina::PieceList::KNIGHT>(board, mt, opts);
-	generatebyPieceType<Seraphina::PieceList::BISHOP>(board, mt, opts);
-	generatebyPieceType<Seraphina::PieceList::ROOK>(board, mt, opts);
-	generatebyPieceType<Seraphina::PieceList::QUEEN>(board, mt, opts);
-	generatebyPieceType<Seraphina::PieceList::KING>(board, mt, opts);
-	generateCastling(board);
+	if (!checkers || !Seraphina::Bitboards::more_than_one(checkers))
+	{
+		target = checkers ? board.getSQbtw(board.getKingSquare(pov), Seraphina::Bitboards::lsb(checkers))
+			: !checkers ? ~board.getoccBB(pov)
+			: mt == Seraphina::MoveType::CAPTURE || mt == Seraphina::MoveType::PROMOTION_CAPTURE ? board.getoccBB(xpov)
+			: ~board.getoccBB(Seraphina::Color::NO_COLOR);
+
+		generatePawn(board, mt, target, checkers);
+		generatebyPieceType<Seraphina::PieceList::KNIGHT>(board, mt, target);
+		generatebyPieceType<Seraphina::PieceList::BISHOP>(board, mt, target);
+		generatebyPieceType<Seraphina::PieceList::ROOK>(board, mt, target);
+		generatebyPieceType<Seraphina::PieceList::QUEEN>(board, mt, target);
+	}
+
+	generateKing(board, mt, target, checkers);
 }
 
 void MoveList::generateQuiet(Board& board)
 {
 	generatePseudoLegal<Seraphina::MoveType::NORMAL>(board);
-	generatePseudoLegal<Seraphina::MoveType::SHORT_CASTLE>(board);
-	generatePseudoLegal<Seraphina::MoveType::LONG_CASTLE>(board);
 }
 
 void MoveList::generateNoisy(Board& board)
 {
 	generatePseudoLegal<Seraphina::MoveType::CAPTURE>(board);
-	generatePseudoLegal<Seraphina::MoveType::ENPASSNT>(board);
+	generatePseudoLegal<Seraphina::MoveType::PROMOTION_CAPTURE>(board);
+}
+
+void MoveList::generateAll(Board& board)
+{
+	generatePseudoLegal<Seraphina::MoveType::NORMAL>(board);
+	generatePseudoLegal<Seraphina::MoveType::CAPTURE>(board);
 	generatePseudoLegal<Seraphina::MoveType::PROMOTION>(board);
 	generatePseudoLegal<Seraphina::MoveType::PROMOTION_CAPTURE>(board);
 }

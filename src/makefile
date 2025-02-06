@@ -1,22 +1,21 @@
 # General
-EXE     = Seraphina
-CXXSRC  = bitboard.cpp evaluate.cpp movegen.cpp movepick.cpp \
-	      nnue.cpp search.cpp Seraphina.cpp thread.cpp tt.cpp uci.cpp
+EXE     = Seraphina-$(VERSION)-$(ARCH)
+CXXSRC  = bitboard.cpp evaluate.cpp movegen.cpp movepick.cpp nnue.cpp \
+		  search.cpp selfplay/selfplay.cpp Seraphina.cpp thread.cpp tt.cpp uci.cpp
 CSRC	= syzygy/tbprobe.c
 SRC     = $(CSRC) $(CXXSRC)
 CXX     = g++
-VERSION  = 1
-SERA_NNUE = S2.nnue
+VERSION  = $(shell grep -oP 'Version "\K[^"]+' types.h)
+SERA_NNUE = $(shell grep -oP 'Seraphina_NNUE "\K[^"]+' nnue.h)
 EVALFILE = $(SERA_NNUE)
 PARAMS  = -DVERSION=\"$(VERSION)\" -DEVALFILE=\"$(EVALFILE)\"
 
 # Flags
 STD    = -std=c++17
 LIBS   = -pthread
-LIBS_WL = -Wl,--whole-archive -lpthread -Wl,--no-whole-archive
 WARN   = -Wall -Wextra -Wshadow
 
-FLAGS   = $(STD) $(WARN) -g -O3 -flto $(PARAMS) -static -static-libgcc -static-libstdc++
+FLAGS   = $(STD) $(WARN) -g -O3 -flto $(PARAMS) -fno-math-errno -funroll-loops -fno-exceptions -static -static-libgcc -static-libstdc++ -pthread
 M64     = -m64 -mpopcnt
 MSSE2   = $(M64) -msse -msse2
 MSSSE3  = $(MSSE2) -mssse3
@@ -28,12 +27,6 @@ MAVX512VNNI = $(MAVX512) -mavx512vnni -mprefer-vector-width=512
 # Detecting windows
 ifeq ($(shell echo "test"), "test")
 	FLAGS += -static
-endif
-
-# Detecting Apple Silicon (ARM64)
-UNAME := $(shell uname -m)
-ifeq ($(UNAME), arm64)
-    ARCH = arm64
 endif
 
 # Setup arch
@@ -59,12 +52,26 @@ else ifeq ($(findstring vnni256, $(ARCH)), vnni256)
 	CXXFLAGS += -DVNNI256
 	CXXFLAGS = $(FLAGS) $(MAVX256VNNI)
 else ifeq ($(findstring vnni512, $(ARCH)), vnni512)
-	CXXFLAGS += -DVNNI256
+	CXXFLAGS += -DVNNI512
 	CXXFLAGS = $(FLAGS) $(MAVX512VNNI)
 endif
 
-build:
+ifeq ($(Evil), yes)
+    CXXFLAGS += -DEVIL
+	EXE = Seraphina-$(VERSION)-$(ARCH)-Evil
+endif
+
+cyan='\e[1;96m'
+blue='\e[1;94m'
+default='\e[0m'
+
+download_nnue:
+	sh ./scripts/get_nnue.sh
+
+build: download_nnue
+	@echo -e $(cyan)"Building Seraphina $(VERSION) $(ARCH)..."$(blue)
 	$(MAKE) ARCH=$(ARCH) all
+	@echo -e $(cyan)"---Seraphina $(VERSION) $(ARCH) Build Finished---"$(default)
 
 all:
 	$(CXX) $(CXXFLAGS) $(SRC) $(LIBS) -o $(EXE)

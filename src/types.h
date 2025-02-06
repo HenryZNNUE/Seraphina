@@ -1,11 +1,11 @@
-#pragma once
-
 // Seraphina is an Open-Source NNUE (Efficiently Updatable Neural Network) UCI Chess Engine
 // Features: Magic Bitboard, Alpha-Beta Pruning, NNUE, etc
 // Requriements: 64-bits Computers, Multiple CPU Architecture Support, Microsoft Windows or Linux Operating System
 // Seraphina's NNUE is trained by Grapheus, syzygy tablebase usage code from Fathom
 // Programmed By Henry Z
 // Special thanks to Luecx, Zomby, Slender(rafid-dev) and other Openbench Discord Members for their generous help of Seraphina NNUE training
+
+#pragma once
 
 #include <algorithm>
 #include <cassert>
@@ -18,25 +18,31 @@
 #endif
 
 // Engine Name
-#define NAME "Seraphina"
+#define Name "Seraphina"
 
 // Engine Official Release Version
-#define VERSION "dev-NNUE-S2"
+#define Version "dev-NNUE-S6"
 
 // Author Name
 #define Author "Henry Z"
+
+#define Bold(unix) (unix ? "\033[1m" : "")
+#define Blue(unix) (unix ? "\033[34m" : "")
+#define Cyan(unix) (unix ? "\033[36m" : "")
+#define Vanilla(unix) (unix ? "\033[0m" : "")
 
 // Square Number of the chess board
 #define SQ_NUM 64
 
 #define MAX_MOVES 256
 #define MAX_PLY 256
+#define MAX_THREADS 1024
 
 // Start Position FEN
 #define START_FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
-static std::string PIECETYPE_CHARS = "PNBRQKpnbrqk ";
-static std::string PIECE_CHARS = "PNBRQK";
+constexpr char PIECETYPE_CHARS[] = "PNBRQKpnbrqk ";
+constexpr char PIECE_CHARS[] = "PNBRQK";
 
 //  Unsigned 64 bits
 using U64 = uint64_t;
@@ -104,7 +110,8 @@ namespace Seraphina
     // WKSC WKLC BKSC BKLC
     enum CastlingType : int
     {
-        WKSC = 1, WKLC = 2, BKSC = 4, BKLC = 8
+        WKSC = 1, WKLC = 2, BKSC = 4, BKLC = 8,
+		ALL_CASTLING = 15
     };
 
     // Move Types
@@ -150,6 +157,8 @@ namespace Seraphina
         if (f == 'r') return BLACK_ROOK;
         if (f == 'q') return BLACK_QUEEN;
         if (f == 'k') return BLACK_KING;
+
+		return NO_PIECETYPE;
     }
 
     constexpr char piecetochar(PieceType pt)
@@ -183,6 +192,8 @@ namespace Seraphina
         if (f == 'R' || f == 'r') return ROOK;
         if (f == 'Q' || f == 'q') return QUEEN;
         if (f == 'K' || f == 'k') return KING;
+
+		return NO_PIECE;
     }
 
     constexpr char piecetocharNOPOV(PieceList p)
@@ -204,12 +215,27 @@ namespace Seraphina
         return (Square)(f + r * 8);
     }
 
+    constexpr Square makesquare(int f, int r)
+    {
+        return (Square)(f + r * 8);
+    }
+
     constexpr File getfile(Square s)
 	{
 		return (File)(s & 7);
 	}
 
+    constexpr File getfile(int s)
+    {
+        return (File)(s & 7);
+    }
+
     constexpr Rank getrank(Square s)
+    {
+        return (Rank)(s >> 3);
+    }
+
+    constexpr Rank getrank(int s)
     {
         return (Rank)(s >> 3);
     }
@@ -219,13 +245,38 @@ namespace Seraphina
 		return (PieceType)(c * 6 + p);
 	}
 
+    constexpr PieceType makepiece(int c, PieceList p)
+    {
+        return (PieceType)(c * 6 + p);
+    }
+
+    constexpr PieceType makepiece(Color c, int p)
+    {
+        return (PieceType)(c * 6 + p);
+    }
+
+    constexpr PieceType makepiece(int c, int p)
+    {
+        return (PieceType)(c * 6 + p);
+    }
+
     constexpr Color getcolor(PieceType pt)
     {
 		return (Color)(pt / 6);
 	}
 
+    constexpr Color getcolor(int pt)
+    {
+        return (Color)(pt / 6);
+    }
+
     constexpr PieceList getpiece(PieceType pt)
     {
 		return (PieceList)(pt % 6);
 	}
+
+    constexpr PieceList getpiece(int pt)
+    {
+        return (PieceList)(pt % 6);
+    }
 }

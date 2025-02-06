@@ -1,21 +1,67 @@
+// Seraphina is an Open-Source NNUE (Efficiently Updatable Neural Network) UCI Chess Engine
+// Features: Magic Bitboard, Alpha-Beta Pruning, NNUE, etc
+// Requriements: 64-bits Computers, Multiple CPU Architecture Support, Microsoft Windows or Linux Operating System
+// Seraphina's NNUE is trained by Grapheus, syzygy tablebase usage code from Fathom
+// Programmed By Henry Z
+// Special thanks to Luecx, Zomby, Slender(rafid-dev) and other Openbench Discord Members for their generous help of Seraphina NNUE training
+
 #include "movepick.h"
 #include "bitboard.h"
 #include "movegen.h"
 #include "search.h"
 
+constexpr int PieceValue[13] = { 208, 781, 825, 1276, 2538, 32001, 208, 781, 825, 1276, 2538, 32001, 0 };
+
 namespace Seraphina
 {
-	Move MovePicker::nextMove()
+	template<MovePickType mpt>
+	Move MovePicker::select()
 	{
-		if (current == end)
+		while (current < end)
 		{
-			return 0;
+			if (mpt == MovePickType::Best)
+			{
+				std::swap(*current, *std::max_element(current, end));
+			}
+
+			return *current++;
 		}
 
-		Move m = *current;
-		current++;
+		return 0;
+	}
 
-		return m;
+	Move MovePicker::nextMove(Board& board, bool skipQuiets)
+	{
+		switch (stage)
+		{
+		case Stages::TT_MOVE:
+			if (isPseudoLegal(board, ttMove))
+			{
+				return ttMove;
+			}
+			[[fallthrough]];
+
+		case Stages::GOOD_QUIET:
+			while (current < end)
+			{
+				if (getMoveType(*current) == MoveType::NORMAL)
+				{
+					return *current++;
+				}
+
+				current++;
+			}
+			[[fallthrough]];
+
+		case Stages::QS_CAPTURE:
+			current = endBad;
+			movelist->generatePseudoLegal<MoveType::CAPTURE>(board);
+			auto moves = movelist->getMoves();
+			end = moves.data();
+			[[fallthrough]];
+		}
+
+		return 0;
 	}
 
 	template<MoveType mt>
@@ -43,44 +89,29 @@ namespace Seraphina
 			const Square from = getFrom(move);
 			const Square to = getTo(move);
 			const PieceType pt = getPieceType(move);
-			Color pov = board.currPOV();
+			const PieceList p = getpiece(pt);
 			// const int captured = getMoveType(move) == MoveType::ENPASSNT ? PieceList::PAWN : getpiece(board.getPieceType(to));
 
 			if (mt == MoveType::CAPTURE || mt == MoveType::PROMOTION_CAPTURE)
 			{
-				value = 7 * board.getPieceValue(board.getBoard(to))
-					+ (*captureHistory)[getpiece((PieceType)board.getBoard(to))][pt][to];
+				value = 7 * PieceValue[board.getBoard(to)]
+					+ (*captureHistory)[getpiece(board.getBoard(to))][pt][to];
 			}
 
 			else if (mt == MoveType::NORMAL)
 			{
 				value = (*mainHistory)[pov][getFromTo(move)];
 				value += ((*pawnHistory)[board.getBoardInfo()->pawnZobrist & (PAWN_HISTORY_SIZE - 1)][pt][to] << 1);
-				value += ((*continuationHistory[0])[pt][to] << 1);
-				value += (*continuationHistory[1])[pt][to];
-				value += (*continuationHistory[2])[pt][to] / 3;
-				value += (*continuationHistory[3])[pt][to];
-				value += (*continuationHistory[5])[pt][to];
 
-				value += bool(board.isChecked(pov) ? (threats[std::max(0, pt - PieceList::BISHOP)] & to) : (0 & to)) * 16384;
 
-				value += threatenedPieces & from
-					? (pt == PieceList::QUEEN && !(to & threatenedByRook) ? 51700
-					: pt == PieceList::ROOK && !(to & threatenedByMinor) ? 25600
-					: !(to & threatenedByPawn) ? 14450
-					: 0)
-					: 0;
-
-				value -= (pt == PieceList::QUEEN ? bool(to & threatenedByRook) * 49000
-					: pt == PieceList::ROOK ? bool(to & threatenedByMinor) * 24335
-					: bool(to & threatenedByPawn) * 14900);
+				value += bool(board.getCheckers() ? (threats[std::max(0, p - PieceList::BISHOP)] & to) : (0 & to)) * 16384;
 			}
 
 			else
 			{
-				if (getCaptured(move) || getCapPromo(move) == PieceList::QUEEN)
+				if (getpiece(getCapPromo(move)) == PieceList::QUEEN)
 				{
-					value = board.getPieceValue(board.getBoard(to)) - pt + (1 << 28);
+					value = PieceValue[board.getBoard(to)] - pt + (1 << 28);
 				}
 				else
 				{

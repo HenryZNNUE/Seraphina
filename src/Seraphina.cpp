@@ -10,103 +10,51 @@
 #endif // Microsoft Windows & Linux
 
 #include <stdio.h>
+#include <chrono>
 
 #include "uci.h"
 #include "bitboard.h"
-#include "evaluate.h"
 #include "movegen.h"
-#include "nnue.h"
 
 namespace Seraphina
 {
     // Fancy Terminal
+    // Inspired by Lc0
     void UI()
     {
-#ifdef _WIN64 // Compatible with Microsoft Windows
-        system("title Seraphina");
-        SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), FOREGROUND_INTENSITY | FOREGROUND_BLUE);
-        printf("=======      =======\n");
-        SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), FOREGROUND_INTENSITY | FOREGROUND_BLUE | FOREGROUND_GREEN);
-        printf("\\\\     ");
-        SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), FOREGROUND_INTENSITY | FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED);
-        printf("\\\\  //");
-        SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), FOREGROUND_INTENSITY | FOREGROUND_BLUE | FOREGROUND_GREEN);
-        printf("     //\n");
-        printf(" \\\\     ");
-        SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), FOREGROUND_INTENSITY | FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED);
-        printf("\\\\//");
-        SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), FOREGROUND_INTENSITY | FOREGROUND_BLUE | FOREGROUND_GREEN);
-        printf("     //\n");
-        printf("  \\\\    ");
-        SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), FOREGROUND_INTENSITY | FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED);
-        printf("//\\\\");
-        SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), FOREGROUND_INTENSITY | FOREGROUND_BLUE | FOREGROUND_GREEN);
-        printf("    //     Seraphina\n");
-        printf("   \\\\  ");
-        SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), FOREGROUND_INTENSITY | FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_RED);
-        printf("//  \\\\");
-        SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), FOREGROUND_INTENSITY | FOREGROUND_BLUE | FOREGROUND_GREEN);
-        printf("  //\n");
-        SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), FOREGROUND_INTENSITY | FOREGROUND_BLUE);
-        printf("     ==      ==\n\n");
-        SetConsoleTextAttribute(GetStdHandle(STD_OUTPUT_HANDLE), FOREGROUND_INTENSITY | FOREGROUND_BLUE | FOREGROUND_GREEN);
-#else // Compatible with Linux
-        printf("\033[0m\033[1;34m%s\033[0m", "=======      =======\n");
-        printf("\033[0m\033[1;36m%s\033[0m", "\\\\     ");
-        printf("\033[0m\033[1;37m%s\037[0m", "\\\\  //");
-        printf("\033[0m\033[1;36m%s\033[0m", "     //\n");
-        printf("\033[0m\033[1;36m%s\033[0m", " \\\\    ");
-        printf("\033[0m\033[1;37m%s\037[0m", "\\\\//");
-        printf("\033[0m\033[1;36m%s\033[0m", "     //\n");
-        printf("\033[0m\033[1;36m%s\033[0m", "  \\\\   ");
-        printf("\033[0m\033[1;37m%s\037[0m", "//\\\\");
-        printf("\033[0m\033[1;36m%s\033[0m", "    //     Seraphina\n");
-        printf("\033[0m\033[1;36m%s\033[0m", "   \\\\  ");
-        printf("\033[0m\033[1;37m%s\037[0m", "//  \\\\");
-        printf("\033[0m\033[1;36m%s\033[0m", "  //\n");
-        printf("\033[0m\033[1;34m%s\033[0m", "     ==      ==\n\n");
+        bool unix_style;
+
+#ifdef _WIN64
+        HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
+        DWORD mode;
+        GetConsoleMode(h, &mode);
+        unix_style = SetConsoleMode(h, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+#else
+        unix_style = true;
 #endif
-
-        /*
-        UI Appearance:
-
-        =======      =======
-        \\     \\  //     //
-         \\     \\//     //
-          \\    //\\    //     Seraphina
-           \\  //  \\  //
-             ==      ==
-
-        */
+        std::cout << Bold(unix_style) << Cyan(unix_style)
+            << " __\n";
+        std::cout
+            << "(_  _ _ _  _ |_ . _  _\n";
+        std::cout << Bold(unix_style) << Cyan(unix_style)
+            << "__)(-| (_||_)| )|| )(_|   "
+            << Blue(unix_style) << Version << " by " << Author << "\n";
+        std::cout << Bold(unix_style) << Cyan(unix_style)
+            << "          |\n\n" << Vanilla(unix_style);
     }
 
     void Evil()
     {
-#ifdef _WIN64 // Compatible with Microsoft Windows
+#if defined _WIN64 && defined EVIL // Compatible with Microsoft Windows
         SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
 #endif
-    }
-
-    void NNUE_Test()
-    {
-        Board board;
-        board.ClearBoard();
-        board.initCuckoo();
-        board.initSQbtw();
-        board.initZobrist();
-        board.parseFEN(START_FEN);
-
-        Move move = setMove(Square::SQ_E2, Square::SQ_E4, PieceType::WHITE_PAWN, MoveType::NORMAL);
-
-        NNUE::init();
-        std::cout << Evaluate(board, move) << "\n";
     }
 }
 
 int main()
 {
     Seraphina::UI(); // Print Engine's Name, Logo & Version
-    // Seraphina::Evil(); // Set Engine's Priority to High if "EVIL" is defined
-    Seraphina::NNUE_Test();
-    while(true);
+    Seraphina::Evil(); // Set Engine's Priority to High if "EVIL" is defined
+	// Seraphina::MoveGenTest(); // Test Move Generation
+    std::cin.get();
 }

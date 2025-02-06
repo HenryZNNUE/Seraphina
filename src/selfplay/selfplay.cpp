@@ -5,21 +5,9 @@
 // Programmed By Henry Z
 // Special thanks to Luecx, Zomby, Slender(rafid-dev) and other Openbench Discord Members for their generous help of Seraphina NNUE training
 
-#pragma once
-
-#include "types.h"
-
-class Board;
+#include "selfplay.h"
 
 namespace Seraphina
 {
-	namespace NNUE
-	{
-		struct alignas(64) Accumulator;
-		struct alignas(64) AccumulatorRefreshTable;
-	}
 
-	int SimpleEval(Board& board);
-	int Evaluate(Board& board, Move& move);
-	void TraceEval(Board& board);
 }

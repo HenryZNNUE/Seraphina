@@ -1,11 +1,11 @@
-#pragma once
-
 // Seraphina is an Open-Source NNUE (Efficiently Updatable Neural Network) UCI Chess Engine
 // Features: Magic Bitboard, Alpha-Beta Pruning, NNUE, etc
 // Requriements: 64-bits Computers, Multiple CPU Architecture Support, Microsoft Windows or Linux Operating System
 // Seraphina's NNUE is trained by Grapheus, syzygy tablebase usage code from Fathom
 // Programmed By Henry Z
 // Special thanks to Luecx, Zomby, Slender(rafid-dev) and other Openbench Discord Members for their generous help of Seraphina NNUE training
+
+#pragma once
 
 // TTEntry struct is the 10 bytes transposition table entry, defined as below:
 //
@@ -36,17 +36,13 @@ namespace Seraphina
 	public:
 		U64 key = 0ULL;
 		uint8_t depth = 0;
-		Move best_move = NULL;
+		Move best_move = 0;
 		uint16_t eval = 0;
 		TT_FLAG ttflag = NO_FLAG;
 
 		TTEntry() = default;
-		TTEntry(U64 key, uint8_t depth, const Move& best_move, uint16_t eval, TT_FLAG ttflag) :
-			key(key),
-			depth(0),
-			best_move(best_move),
-			eval(0),
-			ttflag(NO_FLAG) {}
+		TTEntry(U64 k, uint8_t d, const Move& bm, uint16_t e, TT_FLAG tf) :
+			key(k), depth(d), best_move(bm), eval(e), ttflag(tf) {}
 	};
 
 	// Transposition Table Main

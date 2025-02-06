@@ -27,8 +27,6 @@ void vec_add_dpbusd_epi32(vec_t* acc, vec_t a, vec_t b)
 {
 #if defined (VNNI512)
 	acc = _mm512_dpbusd_epi32(acc, a, b);
-#elif defined (VNNI256)
-	acc = _mm256_dpbusd_epi32(acc, a, b);
 #else
 	// Multiply a * b and accumulate neighbouring outputs into int16 values
 	vec_t product0 = _mm512_maddubs_epi16(a, b);
@@ -51,19 +49,6 @@ void vec_add_dpbusd_epi32x2(vec_t* acc, vec_t a0, vec_t b0, vec_t a1, vec_t b1)
 	*acc = _mm512_add_epi32(*acc, product0);
 }
 
-void vec_add_dpbusd_epi32(__m256i* acc, __m256i a, __m256i b)
-{
-	// Multiply a * b and accumulate neighbouring outputs into int16 values
-	__m256i product0 = _mm256_maddubs_epi16(a, b);
-
-	// Multiply product0 by 1 (idempotent) and accumulate neighbouring outputs into int32 values
-	__m256i one = _mm256_set1_epi16(1);
-	product0 = _mm256_madd_epi16(product0, one);
-
-	// Add to the main int32 accumulator.
-	*acc = _mm256_add_epi32(*acc, product0);
-}
-
 __m128i m512_haddx4(vec_t sum0, vec_t sum1, vec_t sum2, vec_t sum3, __m128i bias)
 {
 	vec_t v0 = _mm512_unpacklo_epi32(sum0, sum1);
@@ -74,37 +59,31 @@ __m128i m512_haddx4(vec_t sum0, vec_t sum1, vec_t sum2, vec_t sum3, __m128i bias
 	vec_t va1 = _mm512_add_epi32(v0, v1);
 	vec_t va2 = _mm512_add_epi32(v2, v3);
 
-	vec_t vr1 = _mm512_unpacklo_epi64(va1, va2);
-	vec_t vr2 = _mm512_unpackhi_epi64(va1, va2);
+	vec_t vslo = _mm512_unpacklo_epi64(va1, va2);
+	vec_t vshi = _mm512_unpackhi_epi64(va1, va2);
 
-	vec_t vr = _mm512_add_epi32(vr1, vr2);
+	vec_t vs = _mm512_add_epi32(vslo, vshi);
 
-	__m256i sum256lo = _mm512_castsi512_si256(sum0);
-	__m256i sum256hi = _mm512_extracti64x4_epi64(sum0, 1);
+	__m256i vs256lo = _mm512_castsi512_si256(vs);
+	__m256i vs256hi = _mm512_extracti64x4_epi64(vs, 1);
 
-	__m128i sum128lo = _mm256_castsi256_si128(sum256lo);
-	__m128i sum128hi = _mm256_extracti128_si256(sum256hi, 1);
+	__m128i vs128lo = _mm256_castsi256_si128(vs256lo);
+	__m128i vs128hi = _mm256_extracti128_si256(vs256hi, 1);
 
-	return _mm_add_epi32(_mm_add_epi32(sum128lo, sum128hi), bias);
-};
+	return _mm_add_epi32(_mm_add_epi32(vs128lo, vs128hi), bias);
+}
 
 static int m512_hadd(__m512i sum, int bias)
 {
 	return _mm512_reduce_add_epi32(sum) + bias;
 }
 
-static int m256_hadd(__m256i sum, int bias)
-{
-	__m128i sum128 = _mm_add_epi32(_mm256_castsi256_si128(sum), _mm256_extracti128_si256(sum, 1));
-	sum128 = _mm_add_epi32(sum128, _mm_shuffle_epi32(sum128, _MM_PERM_BADC));
-	sum128 = _mm_add_epi32(sum128, _mm_shuffle_epi32(sum128, _MM_PERM_CDAB));
-
-	return _mm_cvtsi128_si32(sum128) + bias;
-}
-
 #elif defined(__AVX2__) || defined(__AVX__)
 void vec_add_dpbusd_epi32(vec_t* acc, vec_t a, vec_t b)
 {
+#if defined (VNNI256)
+	acc = _mm256_dpbusd_epi32(acc, a, b);
+#else
 	// Multiply a * b and accumulate neighbouring outputs into int16 values
 	vec_t product0 = _mm256_maddubs_epi16(a, b);
 
@@ -114,6 +93,7 @@ void vec_add_dpbusd_epi32(vec_t* acc, vec_t a, vec_t b)
 
 	// Add to the main int32 accumulator.
 	*acc = _mm256_add_epi32(*acc, product0);
+#endif
 }
 
 void vec_add_dpbusd_epi32x2(vec_t* acc, vec_t a0, vec_t b0, vec_t a1, vec_t b1)
@@ -157,19 +137,19 @@ namespace Seraphina
 {
 	namespace NNUE
 	{
-		int16_t alignas(64) input_weights[FEATURES * L1];
-		int16_t alignas(64) input_bias[HIDDEN];
+		alignas(64) int16_t input_weights[FEATURES * HIDDEN];
+		alignas(64) int16_t input_bias[HIDDEN];
 
-		int8_t alignas(64) L1_weights[L1 * L2];
-		int32_t alignas(64) L1_bias[L2];
+		alignas(64) int8_t L1_weights[L1 * L2];
+		alignas(64) int32_t L1_bias[L2];
 
-		int8_t alignas(64) L2_weights[L2 * L3];
-		int32_t alignas(64) L2_bias[L3];
+		alignas(64) int8_t L2_weights[L2 * L3];
+		alignas(64) int32_t L2_bias[L3];
 
-		int8_t alignas(64) L3_weights[L3 * OUTPUT];
-		int32_t alignas(64) L3_bias[OUTPUT];
+		alignas(64) int8_t L3_weights[L3 * OUTPUT];
+		alignas(64) int32_t L3_bias[OUTPUT];
 
-		uint16_t alignas(64) LookUpIndices[256][8];
+		alignas(64) uint16_t LookUpIndices[256][8];
 
 		// Seraphina NNUE King Bucket
 		static constexpr int King_Buckets[SQ_NUM]
@@ -206,17 +186,17 @@ namespace Seraphina
 			const __m128i increment = _mm_set1_epi16(8);
 			__m128i base = _mm_setzero_si128();
 
-			for (uint32_t i = 0; i < chunknum; i++)
+			for (uint32_t i = 0; i < chunknum; ++i)
 			{
 				uint32_t nnz = 0;
 
-				for (uint32_t j = 0; j < inputperchunk; j++)
+				for (uint32_t j = 0; j < inputperchunk; ++j)
 				{
 					const vec_t inputchunk = vec_load(&in[i * inputperchunk + j]);
 					nnz |= vec_nnz(inputchunk) << (j * width);
 				}
 
-				for (uint32_t k = 0; k < outputperchunk; k++)
+				for (uint32_t k = 0; k < outputperchunk; ++k)
 				{
 					const uint16_t lookup = (nnz >> (k * 8)) & 0xFF;
 					const __m128i offsets = _mm_loadu_si128((__m128i*) (&LookUpIndices[lookup]));
@@ -231,24 +211,24 @@ namespace Seraphina
 
 		void InputClippedReLU(Accumulator* acc, int8_t* output, Color pov)
 		{
-			const uint32_t width = BIT_ALIGNMENT / CHUNK_SIZE;
+			const uint32_t width = sizeof(vec_t) / sizeof(int16_t);
 			const uint32_t chunknum = HIDDEN / width;
-			auto out = reinterpret_cast<vec_t*>(output);
-			const __m256i Offsets = _mm256_set_epi32(7, 3, 6, 2, 5, 1, 4, 0);
-			const Color povs[2] = { pov, (Color)(pov ^ 1) };
+			const int povs[2] = { pov, ~pov };
 
-			for (int32_t c = 0; c < 2; c++)
+			for (int32_t c = 0; c < 2; ++c)
 			{
-				const auto in = reinterpret_cast<const __m256i*>(&acc->acc[povs[c]]);
-				auto out = reinterpret_cast<__m256i*>(&output[HIDDEN * c]);
+				const auto in = reinterpret_cast<const vec_t*>(&acc->acc[povs[c]]);
+				auto out = reinterpret_cast<vec_t*>(&output[HIDDEN * c]);
 
-				for (uint32_t i = 0; i < chunknum; i++)
+				for (uint32_t i = 0; i < chunknum / 2; i += 2)
 				{
-					const __m256i s0 =
-						_mm256_srli_epi16(_mm256_packus_epi32(_mm256_load_si256(&in[(i << 2) + 0]), _mm256_load_si256(&in[(i << 2) + 1])), 6);
-					const __m256i s1 =
-						_mm256_srli_epi16(_mm256_packus_epi32(_mm256_load_si256(&in[(i << 2) + 2]), _mm256_load_si256(&in[(i << 2) + 3])), 6);
-					_mm256_store_si256(&out[i], _mm256_permutevar8x32_epi32(_mm256_packs_epi16(s0, s1), Offsets));
+					vec_t v0 = vec_srai_16(in[i * 2], 6);
+					vec_t v1 = vec_srai_16(in[i * 2 + 1], 6);
+					vec_t v2 = vec_srai_16(in[i * 2 + 2], 6);
+					vec_t v3 = vec_srai_16(in[i * 2 + 3], 6);
+
+					out[i] = vec_max_16(vec_packs_16(v0, v1), vec_setzero());
+					out[i + 1] = vec_max_16(vec_packs_16(v2, v3), vec_setzero());
 				}
 			}
 		}
@@ -257,13 +237,13 @@ namespace Seraphina
 		{
 			vec_t acc[REG_NUM];
 
-			for (int32_t i = 0; i < HIDDEN / BIT_ALIGNMENT; i++)
+			for (int32_t i = 0; i < HIDDEN / BIT_ALIGNMENT; ++i)
 			{
 				const int32_t offset = i * BIT_ALIGNMENT;
 				const auto inputs = reinterpret_cast<const vec_t*>(&input[offset]);
 				const auto outputs = reinterpret_cast<vec_t*>(&output[offset]);
 
-				for (int32_t j = 0; j < REG_NUM; j++)
+				for (int32_t j = 0; j < REG_NUM; ++j)
 				{
 					acc[j] = vec_load(&inputs[j]);
 				}
@@ -271,7 +251,7 @@ namespace Seraphina
 				const int32_t or1 = v1 * HIDDEN + offset;
 				const vec_t* wr1 = reinterpret_cast<const vec_t*>(&input_weights[or1]);
 
-				for (int32_t j = 0; j < REG_NUM; j++)
+				for (int32_t j = 0; j < REG_NUM; ++j)
 				{
 					acc[j] = vec_sub_16(acc[j], wr1[j]);
 				}
@@ -279,12 +259,12 @@ namespace Seraphina
 				const int32_t oa = v2 * HIDDEN + offset;
 				const vec_t* wa = reinterpret_cast<const vec_t*>(&input_weights[oa]);
 
-				for (int32_t j = 0; j < REG_NUM; j++)
+				for (int32_t j = 0; j < REG_NUM; ++j)
 				{
 					acc[j] = vec_add_16(acc[j], wa[j]);
 				}
 
-				for (int32_t j = 0; j < REG_NUM; j++)
+				for (int32_t j = 0; j < REG_NUM; ++j)
 				{
 					vec_store(&outputs[j], acc[j]);
 				}
@@ -295,13 +275,13 @@ namespace Seraphina
 		{
 			vec_t acc[REG_NUM];
 
-			for (int32_t i = 0; i < HIDDEN / BIT_ALIGNMENT; i++)
+			for (int32_t i = 0; i < HIDDEN / BIT_ALIGNMENT; ++i)
 			{
 				const int32_t offset = i * BIT_ALIGNMENT;
 				const auto inputs = reinterpret_cast<const vec_t*>(&input[offset]);
 				const auto outputs = reinterpret_cast<vec_t*>(&output[offset]);
 
-				for (int32_t j = 0; j < REG_NUM; j++)
+				for (int32_t j = 0; j < REG_NUM; ++j)
 				{
 					acc[j] = vec_load(&inputs[j]);
 				}
@@ -309,7 +289,7 @@ namespace Seraphina
 				const int32_t or1 = v1 * HIDDEN + offset;
 				const vec_t* wr1 = reinterpret_cast<const vec_t*>(&input_weights[or1]);
 
-				for (int32_t j = 0; j < REG_NUM; j++)
+				for (int32_t j = 0; j < REG_NUM; ++j)
 				{
 					acc[j] = vec_sub_16(acc[j], wr1[j]);
 				}
@@ -317,7 +297,7 @@ namespace Seraphina
 				const int32_t or2 = v2 * HIDDEN + offset;
 				const vec_t* wr2 = reinterpret_cast<const vec_t*>(&input_weights[or2]);
 
-				for (int32_t j = 0; j < REG_NUM; j++)
+				for (int32_t j = 0; j < REG_NUM; ++j)
 				{
 					acc[j] = vec_sub_16(acc[j], wr2[j]);
 				}
@@ -325,12 +305,12 @@ namespace Seraphina
 				const int32_t oa = v3 * HIDDEN + offset;
 				const vec_t* wa = reinterpret_cast<const vec_t*>(&input_weights[oa]);
 
-				for (int32_t j = 0; j < REG_NUM; j++)
+				for (int32_t j = 0; j < REG_NUM; ++j)
 				{
 					acc[j] = vec_add_16(acc[j], wa[j]);
 				}
 
-				for (int32_t j = 0; j < REG_NUM; j++)
+				for (int32_t j = 0; j < REG_NUM; ++j)
 				{
 					vec_store(&outputs[j], acc[j]);
 				}
@@ -340,13 +320,13 @@ namespace Seraphina
 		{
 			vec_t acc[REG_NUM];
 
-			for (int32_t i = 0; i < HIDDEN / BIT_ALIGNMENT; i++)
+			for (int32_t i = 0; i < HIDDEN / BIT_ALIGNMENT; ++i)
 			{
 				const int32_t offset = i * BIT_ALIGNMENT;
 				const auto inputs = reinterpret_cast<const vec_t*>(&input[offset]);
 				const auto outputs = reinterpret_cast<vec_t*>(&output[offset]);
 
-				for (int32_t j = 0; j < REG_NUM; j++)
+				for (int32_t j = 0; j < REG_NUM; ++j)
 				{
 					acc[j] = vec_load(&inputs[j]);
 				}
@@ -354,7 +334,7 @@ namespace Seraphina
 				const int32_t or1 = v1 * HIDDEN + offset;
 				const vec_t* wr1 = reinterpret_cast<const vec_t*>(&input_weights[or1]);
 
-				for (int32_t j = 0; j < REG_NUM; j++)
+				for (int32_t j = 0; j < REG_NUM; ++j)
 				{
 					acc[j] = vec_sub_16(acc[j], wr1[j]);
 				}
@@ -362,7 +342,7 @@ namespace Seraphina
 				const int32_t or2 = v2 * HIDDEN + offset;
 				const vec_t* wr2 = reinterpret_cast<const vec_t*>(&input_weights[or2]);
 
-				for (int32_t j = 0; j < REG_NUM; j++)
+				for (int32_t j = 0; j < REG_NUM; ++j)
 				{
 					acc[j] = vec_sub_16(acc[j], wr2[j]);
 				}
@@ -370,7 +350,7 @@ namespace Seraphina
 				const int32_t oa1 = v3 * HIDDEN + offset;
 				const vec_t* wa1 = reinterpret_cast<const vec_t*>(&input_weights[oa1]);
 
-				for (int32_t j = 0; j < REG_NUM; j++)
+				for (int32_t j = 0; j < REG_NUM; ++j)
 				{
 					acc[j] = vec_add_16(acc[j], wa1[j]);
 				}
@@ -378,12 +358,12 @@ namespace Seraphina
 				const int32_t oa2 = v4 * HIDDEN + offset;
 				const vec_t* wa2 = reinterpret_cast<const vec_t*>(&input_weights[oa2]);
 
-				for (int32_t j = 0; j < REG_NUM; j++)
+				for (int32_t j = 0; j < REG_NUM; ++j)
 				{
 					acc[j] = vec_add_16(acc[j], wa2[j]);
 				}
 
-				for (int32_t j = 0; j < REG_NUM; j++)
+				for (int32_t j = 0; j < REG_NUM; ++j)
 				{
 					vec_store(&outputs[j], acc[j]);
 				}
@@ -397,7 +377,31 @@ namespace Seraphina
 				+ input / L1 * 4 + input % 4;
 		}
 
-		bool Accumulator::RequireRefresh(Move& move, Color pov)
+		void* aligned_malloc(size_t size, size_t alignment)
+		{
+#if defined _WIN64
+			void* ptr = _aligned_malloc(size, alignment);
+
+			if (ptr == nullptr)
+			{
+				std::cerr << "Memory allocation failed\n";
+				return nullptr;
+			}
+#else
+			void* ptr = nullptr;
+			int result = posix_memalign(&ptr, alignment, size);
+
+			if (result != 0)
+			{
+				std::cerr << "Memory allocation failed\n";
+				return nullptr;
+			}
+#endif
+
+			return ptr;
+		}
+
+		bool Accumulator::RequireRefresh(Move& move, int pov)
 		{
 			if (getpiece(getPieceType(move)) == PieceList::KING)
 			{
@@ -407,18 +411,18 @@ namespace Seraphina
 			return NNUE::King_Buckets[getFrom(move) ^ (56 * pov)] != NNUE::King_Buckets[getTo(move) ^ (56 * pov)];
 		}
 
-		bool Accumulator::updatable(Accumulator* acc, Move& move, Color pov)
+		bool Accumulator::updatable(Accumulator* accum, Move& move, int pov)
 		{
 			while (1)
 			{
-				acc--;
+				--accum;
 
 				if (getcolor(getPieceType(move)) == pov && RequireRefresh(move, pov))
 				{
 					return false;
 				}
 				
-				if (acc->computed[pov])
+				if (accum->computed[pov])
 				{
 					return true;
 				}
@@ -427,58 +431,58 @@ namespace Seraphina
 
 		void Accumulator::add_accumulator(int16_t* input, int16_t* output, Delta* delta)
 		{
-			vec_t acc[REG_NUM];
+			vec_t accum[REG_NUM];
 
-			for (int32_t i = 0; i < HIDDEN / BIT_ALIGNMENT; i++)
+			for (int32_t i = 0; i < HIDDEN / BIT_ALIGNMENT; ++i)
 			{
 				const int32_t offset = i * BIT_ALIGNMENT;
 				const auto inputs = reinterpret_cast<const vec_t*>(&input[offset]);
 				auto outputs = reinterpret_cast<vec_t*>(&output[offset]);
 
-				for (int32_t j = 0; j < REG_NUM; j++)
+				for (int32_t j = 0; j < REG_NUM; ++j)
 				{
-					acc[j] = vec_load(&inputs[j]);
+					accum[j] = vec_load(&inputs[j]);
 				}
 
-				for (int32_t r = 0; r < delta->r; r++)
+				for (int32_t r = 0; r < delta->r; ++r)
 				{
 					const int32_t removedOffset = delta->removed[r] * HIDDEN + offset;
 					const vec_t* weights = reinterpret_cast<const vec_t*>(&input_weights[removedOffset]);
 
-					for (int32_t j = 0; j < REG_NUM; j++)
+					for (int32_t j = 0; j < REG_NUM; ++j)
 					{
-						acc[j] = vec_sub_16(acc[j], weights[j]);
+						accum[j] = vec_sub_16(accum[j], weights[j]);
 					}
 				}
 
-				for (int32_t a = 0; a < delta->a; a++)
+				for (int32_t a = 0; a < delta->a; ++a)
 				{
 					const int32_t addedOffset = delta->added[a] * HIDDEN + offset;
 					const vec_t* weights = reinterpret_cast<const vec_t*>(&input_weights[addedOffset]);
 
-					for (int32_t j = 0; j < REG_NUM; j++)
+					for (int32_t j = 0; j < REG_NUM; ++j)
 					{
-						acc[j] = vec_add_16(acc[j], weights[j]);
+						accum[j] = vec_add_16(accum[j], weights[j]);
 					}
 				}
 
-				for (int32_t j = 0; j < REG_NUM; j++)
+				for (int32_t j = 0; j < REG_NUM; ++j)
 				{
-					vec_store(&outputs[j], acc[j]);
+					vec_store(&outputs[j], accum[j]);
 				}
 			}
 		}
 
-		void AccumulatorRefreshTable::ApplyRefresh(Board& board, Color pov)
+		void AccumulatorRefreshTable::ApplyRefresh(Board& board, int pov)
 		{
 			Delta delta[1];
 			delta->a = delta->r = 0;
 			Square KingSq = board.getKingSquare(pov);
 			AccumulatorRefreshTableEntry& entry = board.accRT->table[KingSq];
 
-			for (Color c = WHITE; c < NO_COLOR; c = (Color)(c + 1))
+			for (int c = WHITE; c < NO_COLOR; ++c)
 			{
-				for (PieceList p = PAWN; p < NO_PIECE; p = (PieceList)(p + 1))
+				for (int p = PAWN; p < NO_PIECE; ++p)
 				{
 					const PieceType pt = makepiece(c, p);
 					const Bitboard pieceBB = board.getPieceBB(pt);
@@ -503,23 +507,26 @@ namespace Seraphina
 				}
 			}
 
-			board.acc->add_accumulator(entry.acc, entry.acc, delta);
-			std::memcpy(board.acc->acc[pov], entry.acc, sizeof(int16_t) * HIDDEN);
+			board.acc->add_accumulator(entry.acc.acc[pov], entry.acc.acc[pov], delta);
+			std::memcpy(board.acc->acc[pov], entry.acc.acc[pov], sizeof(int16_t) * HIDDEN);
 			board.acc->computed[pov] = true;
 		}
 
 		void AccumulatorRefreshTable::ResetTable()
 		{
-			for (int i = 0; i < SQ_NUM; i++)
+			for (int pov = 0; pov < 2; ++pov)
 			{
-				std::memcpy(table[i].acc, input_bias, sizeof(int16_t) * HIDDEN);
+				for (int i = 0; i < SQ_NUM; ++i)
+				{
+					std::memcpy(table[i].acc.acc[pov], input_bias, sizeof(int16_t) * HIDDEN);
+				}
 			}
 		}
 
 		// Initialize NNUE
 		void init()
 		{
-			int index = 0;
+			size_t index = 0;
 			int8_t* l1 = (int8_t*)malloc(L1 * L2 * sizeof(int8_t));
 
 			std::memcpy(input_weights, &gNNUEData[index], FEATURES * HIDDEN * sizeof(int16_t));
@@ -537,11 +544,11 @@ namespace Seraphina
 			std::memcpy(L2_bias, &gNNUEData[index], L3 * sizeof(int32_t));
 			index += L3 * sizeof(int32_t);
 
-			std::memcpy(L3_weights, &gNNUEData[index], L3 * sizeof(int8_t));
-			index += L3 * sizeof(int8_t);
+			std::memcpy(L3_weights, &gNNUEData[index], L3 * OUTPUT * sizeof(int8_t));
+			index += L3 * OUTPUT * sizeof(int8_t);
 			std::memcpy(L3_bias, &gNNUEData[index], sizeof(int32_t));
 
-			for (int i = 0; i < L1 * L2; i++)
+			for (int i = 0; i < L1 * L2; ++i)
 			{
 				L1_weights[ScrambleWeightIndex(i)] = l1[i];
 			}
@@ -616,7 +623,7 @@ namespace Seraphina
 			}
 #endif
 
-			for (int i = 0; i < 256; i++)
+			for (int i = 0; i < 256; ++i)
 			{
 				uint64_t j = i;
 				uint64_t k = 0;
@@ -650,7 +657,7 @@ namespace Seraphina
 			init();
 		}
 
-		void update_accumulator(Board& board, const Move& move, Color pov)
+		void update_accumulator(Board& board, const Move& move, int pov)
 		{
 			Accumulator* newacc = board.acc;
 
@@ -717,11 +724,11 @@ namespace Seraphina
 					remove_add(input, output, from, to);
 				}
 
-				(newacc++)->computed[pov] = true;
+				(newacc + 1)->computed[pov] = true;
 			} while (++newacc != board.acc);
 		}
 
-		void reset_accumulator(Board& board, Color pov)
+		void reset_accumulator(Board& board, int pov)
 		{
 			Delta delta[1];
 			delta->a = delta->r = 0;
@@ -749,16 +756,16 @@ namespace Seraphina
 
 			const auto l1_inputs = reinterpret_cast<const int32_t*>(input);
 			__m128i* out = reinterpret_cast<__m128i*>(&output);
-			const vec_t* l1_bias = reinterpret_cast<vec_t*>(&L1_bias);
+			const vec_t* l1_bias = reinterpret_cast<vec_t*>(L1_bias);
 
 			uint16_t nnz[l1_chunknum];
-			int32_t nnzcount = findnnz(l1_inputs, nnz, L1);
+			int32_t nnzcount = findnnz(l1_inputs, nnz, l1_chunknum);
 
 			vec_t l1_reg[l1_outputchunk];
 
-			for (int32_t i = 0; i < l1_outputchunk; i++)
+			for (int32_t i = 0; i < l1_outputchunk; ++i)
 			{
-				l1_reg[i] = vec_load(&l1_bias[i]);
+				l1_reg[i] = l1_bias[i];
 			}
 
 			int32_t i = 0;
@@ -773,7 +780,7 @@ namespace Seraphina
 				const vec_t* w0 = reinterpret_cast<const vec_t*>(&L1_weights[i0 * L2 * 4]);
 				const vec_t* w1 = reinterpret_cast<const vec_t*>(&L1_weights[i1 * L2 * 4]);
 
-				for (int32_t j = 0; j < l1_outputchunk; j++)
+				for (int32_t j = 0; j < l1_outputchunk; ++j)
 				{
 					vec_add_dpbusd_epi32x2(l1_reg + j, v0, w0[j], v1, w1[j]);
 				}
@@ -785,15 +792,15 @@ namespace Seraphina
 				const vec_t v0 = vec_set_32(l1_inputs[i0]);
 				const vec_t* w0 = reinterpret_cast<const vec_t*>(&L1_weights[i0 * L2 * 4]);
 
-				for (int j = 0; j < l1_outputchunk; j++)
+				for (int j = 0; j < l1_outputchunk; ++j)
 				{
 					vec_add_dpbusd_epi32(l1_reg + j, v0, w0[j]);
 				}
 			}
 
-			for (int32_t i = 0; i < l1_outputchunk; i++)
+			for (int32_t j = 0; j < l1_outputchunk; ++j)
 			{
-				out[i] = vec_cvt_8(vec_min_32(vec_max_32(l1_reg[i], vec_zero()), scalar));
+				out[j] = vec_cvt_8(vec_min_32(vec_max_32(l1_reg[j], vec_zero()), scalar));
 			}
 		}
 
@@ -803,25 +810,30 @@ namespace Seraphina
 			const int32_t l2_chunknum = L2 / 4;
 			const int32_t l2_outputchunk = L3 / width;
 
-			const auto l2_inputs = reinterpret_cast<const int32_t*>(&input);
+			const auto l2_inputs = reinterpret_cast<const int32_t*>(input);
 			const vec_t* l2_weights = reinterpret_cast<const vec_t*>(&L2_weights);
-			const vec_t* l2_bias = reinterpret_cast<vec_t*>(&L2_bias);
+			const vec_t* l2_bias = reinterpret_cast<vec_t*>(L2_bias);
 			__m128i* out = reinterpret_cast<__m128i*>(&output);
 
 			vec_t l2_reg[l2_outputchunk];
 
-			for (int32_t i = 0; i < l2_chunknum; i++)
+			for (int32_t i = 0; i < l2_outputchunk; ++i)
 			{
-				const vec_t in = vec_load(&l2_inputs[i]);
-				const auto weights = reinterpret_cast<const vec_t*>(&l2_weights[(i * L3) << 2]);
+				l2_reg[i] = l2_bias[i];
+			}
 
-				for (int32_t j = 0; j < l2_outputchunk; j++)
+			for (int32_t i = 0; i < l2_chunknum; ++i)
+			{
+				const vec_t in = vec_set_32(l2_inputs[i]);
+				const auto weights = reinterpret_cast<const vec_t*>(&l2_weights[i * L3 * 4]);
+
+				for (int32_t j = 0; j < l2_outputchunk; ++j)
 				{
 					vec_add_dpbusd_epi32(&l2_reg[j], in, weights[j]);
 				}
 			}
 
-			for (int32_t i = 0; i < l2_outputchunk; i++)
+			for (int32_t i = 0; i < l2_outputchunk; ++i)
 			{
 				out[i] = vec_cvt_8(vec_min_32(vec_max_32(l2_reg[i], vec_zero()), scalar));
 			}
@@ -833,24 +845,28 @@ namespace Seraphina
 			// Layer 3
 			const int32_t l3_outputchunk = L3 / outwidth;
 
-			const __m256i* l3_inputs = reinterpret_cast<const __m256i*>(&input);
-			const __m256i* l3_weights = reinterpret_cast<const __m256i*>(&L3_weights);
+			const vec_t* l3_inputs = reinterpret_cast<const vec_t*>(&input);
+			const vec_t* l3_weights = reinterpret_cast<const vec_t*>(&L3_weights);
 
-			__m256i v0 = _mm256_setzero_si256();
+			vec_t v0 = vec_setzero();
 
-			for (int i = 0; i < l3_outputchunk; i++)
+			for (int i = 0; i < l3_outputchunk; ++i)
 			{
 				vec_add_dpbusd_epi32(&v0, l3_inputs[i], l3_weights[i]);
 			}
 
+#if defined(__AVX512F__) && defined(__AVX512BW__)
+			output[0] = m512_hadd(v0, L3_bias[0]);
+#elif defined(__AVX2__) || defined(__AVX__)
 			output[0] = m256_hadd(v0, L3_bias[0]);
+#endif
 		}
 
 		int forward(Accumulator& acc, Color pov)
 		{
-			int8_t alignas(64) ft_output[L1];
-			uint8_t alignas(64) l1_output[L2];
-			uint8_t alignas(64) l2_output[L3];
+			alignas(64) int8_t ft_output[L1];
+			alignas(64) uint8_t l1_output[L2];
+			alignas(64) uint8_t l2_output[L3];
 			int32_t eval;
 
 			InputClippedReLU(&acc, ft_output, pov);

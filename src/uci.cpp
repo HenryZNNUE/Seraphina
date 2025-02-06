@@ -19,7 +19,7 @@ namespace Seraphina
 {
 	static void UCI_Intro()
 	{
-		std::cout << "id name " << NAME << VERSION << "\n";
+		std::cout << "id name " << Name << Version << "\n";
 		std::cout << "id author " << Author << "\n";
 		std::cout << "uciok\n";
 	}
@@ -31,11 +31,11 @@ namespace Seraphina
 
 	WDLParams WDL(Board& board)
 	{
-		int material = board.countPiece(Seraphina::PieceType::WHITE_PAWN) + board.countPiece(Seraphina::PieceType::BLACK_PAWN)
-			+ 3 * (board.countPiece(Seraphina::PieceType::WHITE_KNIGHT) + board.countPiece(Seraphina::PieceType::BLACK_KNIGHT))
-			+ 3 * (board.countPiece(Seraphina::PieceType::WHITE_BISHOP) + board.countPiece(Seraphina::PieceType::BLACK_BISHOP))
-			+ 5 * (board.countPiece(Seraphina::PieceType::WHITE_ROOK) + board.countPiece(Seraphina::PieceType::BLACK_ROOK))
-			+ 9 * (board.countPiece(Seraphina::PieceType::WHITE_QUEEN) + board.countPiece(Seraphina::PieceType::BLACK_QUEEN));
+		int material = board.getPieceCount(Seraphina::PieceType::WHITE_PAWN) + board.getPieceCount(Seraphina::PieceType::BLACK_PAWN)
+			+ 3 * (board.getPieceCount(Seraphina::PieceType::WHITE_KNIGHT) + board.getPieceCount(Seraphina::PieceType::BLACK_KNIGHT))
+			+ 3 * (board.getPieceCount(Seraphina::PieceType::WHITE_BISHOP) + board.getPieceCount(Seraphina::PieceType::BLACK_BISHOP))
+			+ 5 * (board.getPieceCount(Seraphina::PieceType::WHITE_ROOK) + board.getPieceCount(Seraphina::PieceType::BLACK_ROOK))
+			+ 9 * (board.getPieceCount(Seraphina::PieceType::WHITE_QUEEN) + board.getPieceCount(Seraphina::PieceType::BLACK_QUEEN));
 
 		double m = std::clamp(material, 17, 78) / 58.0;
 
@@ -50,5 +50,11 @@ namespace Seraphina
 		auto [a, b] = WDL(board);
 
 		return int(0.5 + 1000 / (1 + std::exp((a - double(score)) / b)));
+	}
+
+	int cp(Board& board, int v)
+	{
+		auto [a, b] = WDL(board);
+		return std::round(100 * int(v) / a);
 	}
 }

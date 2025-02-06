@@ -1,5 +1,3 @@
-#pragma once
-
 // Seraphina is an Open-Source NNUE (Efficiently Updatable Neural Network) UCI Chess Engine
 // Features: Magic Bitboard, Alpha-Beta Pruning, NNUE, etc
 // Requriements: 64-bits Computers, Multiple CPU Architecture Support, Microsoft Windows or Linux Operating System
@@ -7,51 +5,67 @@
 // Programmed By Henry Z
 // Special thanks to Luecx, Zomby, Slender(rafid-dev) and other Openbench Discord Members for their generous help of Seraphina NNUE training
 
+#pragma once
+
 #include "types.h"
+#include "movepick.h"
 
 class Board;
 class MoveList;
 class TT;
 
-typedef int16_t PieceToHistory[12][64];
-
 namespace Seraphina
 {
+	struct RootMove
+	{
+		MoveList* pv;
+
+		int seldepth = 0;
+		int score = -VALUE_INFINITE;
+		int prevScore = -VALUE_INFINITE;
+		int avgScore = -VALUE_INFINITE;
+	};
+
+	struct Stack
+	{
+		Move move;
+		int ply;
+		Score staticEval;
+		bool tt;
+
+		PieceToHistory* continuationHistory;
+		PieceToCorrectionHistory* continuationCorrectionHistory;
+	};
+
 	bool SEE(Board& board, Move& move, int threshold);
 
 	class Search
 	{
 	private:
-		Move move;
-		int depth, seldepth, nodes;
-		Score score, previousScore, avgScore;
-		MoveList* pv;
-		int multipv;
-		int time;
 
 	public:
-		TT* tt;
+		ButterflyHistory butterflyHistory;
+		CapturedPieceToHistory captureHistory;
+		ContinuationHistory continuationHistory;
+
+		CorrectionHistory pawncorrectionHistory;
+		NonPawnCorrectionHistory nonpawnCorrectionHistory;
+		ContinuationCorrectionHistory continuationCorrectionHistory;
+
+		LowPlyHistory lowplyHistory;
+		PawnHistory pawnHistory;
+
 		void init();
 		void Root();
 
-		int alpha_beta(int alpha, int beta, int depth);
-		int qsearch();
+		int search(int alpha, int beta, int d);
+		int qsearch(Stack& ss, int alpha, int beta, int d);
 
 		void StartThinking(Board& board);
-		void SearchClear();
 
 		void UCIOutput();
 		void PV();
 
 		Search();
-	};
-
-	struct SearchStack
-	{
-		int staticEval, ply, statScore;
-		Move* pv;
-		Move currentMove, excludedMove, killers[2];
-		PieceToHistory** continuationHistory;
-		bool ttPV;
 	};
 }

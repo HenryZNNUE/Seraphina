@@ -1,5 +1,3 @@
-#pragma once
-
 // Seraphina is an Open-Source NNUE (Efficiently Updatable Neural Network) UCI Chess Engine
 // Features: Magic Bitboard, Alpha-Beta Pruning, NNUE, etc
 // Requriements: 64-bits Computers, Multiple CPU Architecture Support, Microsoft Windows or Linux Operating System
@@ -7,28 +5,31 @@
 // Programmed By Henry Z
 // Special thanks to Luecx, Zomby, Slender(rafid-dev) and other Openbench Discord Members for their generous help of Seraphina NNUE training
 
+#pragma once
+
+#include <array>
 #include <vector>
 
 #include "types.h"
 #include "sliders.hpp"
 
-#define FileABB 0x0101010101010101ULL
-#define FileBBB 0x0202020202020202ULL
-#define FileCBB 0x0404040404040404ULL
-#define FileDBB 0x0808080808080808ULL
-#define FileEBB 0x1010101010101010ULL
-#define FileFBB 0x2020202020202020ULL
-#define FileGBB 0x4040404040404040ULL
-#define FileHBB 0x8080808080808080ULL
+constexpr Bitboard FileABB = 0x0101010101010101ULL;
+constexpr Bitboard FileBBB = FileABB << 1;
+constexpr Bitboard FileCBB = FileABB << 2;
+constexpr Bitboard FileDBB = FileABB << 3;
+constexpr Bitboard FileEBB = FileABB << 4;
+constexpr Bitboard FileFBB = FileABB << 5;
+constexpr Bitboard FileGBB = FileABB << 6;
+constexpr Bitboard FileHBB = FileABB << 7;
 
-#define Rank1BB 0xFF00000000000000ULL
-#define Rank2BB 0x00FF000000000000ULL
-#define Rank3BB 0x0000FF0000000000ULL
-#define Rank4BB 0x000000FF00000000ULL
-#define Rank5BB 0x00000000FF000000ULL
-#define Rank6BB 0x0000000000FF0000ULL
-#define Rank7BB 0x000000000000FF00ULL
-#define Rank8BB 0x00000000000000FFULL
+constexpr Bitboard Rank1BB = 0xFF;
+constexpr Bitboard Rank2BB = Rank1BB << (8 * 1);
+constexpr Bitboard Rank3BB = Rank1BB << (8 * 2);
+constexpr Bitboard Rank4BB = Rank1BB << (8 * 3);
+constexpr Bitboard Rank5BB = Rank1BB << (8 * 4);
+constexpr Bitboard Rank6BB = Rank1BB << (8 * 5);
+constexpr Bitboard Rank7BB = Rank1BB << (8 * 6);
+constexpr Bitboard Rank8BB = Rank1BB << (8 * 7);
 
 // pre calculated lookup table for pawn attacks
 static constexpr Bitboard PAWN_ATTACKS_TABLE[2][64] = {
@@ -113,13 +114,12 @@ namespace Seraphina
 
 	namespace Bitboards
 	{
-
-        constexpr Bitboard bit(int sq)
+        constexpr Bitboard bit(Square sq)
         {
             return (1ULL << sq);
         }
 
-        constexpr Bitboard bit(Square sq)
+        constexpr Bitboard bit(int sq)
         {
             return (1ULL << sq);
         }
@@ -178,9 +178,9 @@ namespace Seraphina
 
         inline Square poplsb(U64& mask)
         {
-            int8_t s = lsb(mask);
+            Square s = lsb(mask);
             mask &= mask - 1;
-            return Square(s);
+            return s;
         }
 
         inline void setBit(U64& mask, Square sq)
@@ -188,36 +188,61 @@ namespace Seraphina
 			mask |= (1ULL << sq);
 		}
 
+        inline void setBit(U64& mask, int sq)
+        {
+            mask |= (1ULL << sq);
+        }
+
         inline void popBit(U64& mask, Square sq)
         {
             mask &= ~(1ULL << sq);
         }
 
-        Bitboard getPawnAttacks(Color pov, Square sq);
-        Bitboard getKnightAttacks(Square sq);
-        Bitboard getBishopAttacks(Square sq, Bitboard occ);
-        Bitboard getRookAttacks(Square sq, Bitboard occ);
-        Bitboard getQueenAttacks(Square sq, Bitboard occ);
-        Bitboard getKingAttacks(Square sq);
-        Bitboard getPieceAttacks(Square sq, Bitboard occ, PieceList p);
+        inline void popBit(U64& mask, int sq)
+        {
+            mask &= ~(1ULL << sq);
+        }
 
-        void printBB(const Bitboard& bb);
+		inline bool more_than_one(U64 b)
+		{
+			return b & (b - 1);
+		}
+
+        Bitboard getPawnAttacks(Color pov, Square sq);
+		Bitboard getPawnAttacks(int pov, int sq);
+        Bitboard getKnightAttacks(Square sq);
+		Bitboard getKnightAttacks(int sq);
+        Bitboard getBishopAttacks(Square sq, Bitboard occ);
+		Bitboard getBishopAttacks(int sq, Bitboard occ);
+        Bitboard getRookAttacks(Square sq, Bitboard occ);
+		Bitboard getRookAttacks(int sq, Bitboard occ);
+        Bitboard getQueenAttacks(Square sq, Bitboard occ);
+		Bitboard getQueenAttacks(int sq, Bitboard occ);
+        Bitboard getKingAttacks(Square sq);
+		Bitboard getKingAttacks(int sq);
+        Bitboard getPieceAttacks(Square sq, Bitboard occ, PieceList p);
+        Bitboard getPieceAttacks(int sq, Bitboard occ, int p);
 
         template <Direction D>
         Bitboard shift(Bitboard bb)
         {
             return D == Direction::NORTH ? bb << 8
-                 : D == Direction::SOUTH ? bb >> 8
-                 : D == Direction::NORTH + Direction::NORTH ? bb << 16
-                 : D == Direction::SOUTH + Direction::SOUTH ? bb >> 16
-                 : D == Direction::EAST ? (bb & ~FileHBB) << 1
-                 : D == Direction::WEST ? (bb & ~FileABB) >> 1
-                 : D == Direction::NORTH_EAST ? (bb & ~FileHBB) << 9
-                 : D == Direction::NORTH_WEST ? (bb & ~FileABB) << 7
-                 : D == Direction::SOUTH_EAST ? (bb & ~FileHBB) >> 7
-                 : D == Direction::SOUTH_WEST ? (bb & ~FileABB) >> 9
-                 : 0;
+                : D == Direction::SOUTH ? bb >> 8
+                : D == Direction::NORTH + Direction::NORTH ? bb << 16
+                : D == Direction::SOUTH + Direction::SOUTH ? bb >> 16
+                : D == Direction::EAST ? (bb & ~FileHBB) << 1
+                : D == Direction::WEST ? (bb & ~FileABB) >> 1
+                : D == Direction::NORTH_EAST ? (bb & ~FileHBB) << 9
+                : D == Direction::NORTH_WEST ? (bb & ~FileABB) << 7
+                : D == Direction::SOUTH_EAST ? (bb & ~FileHBB) >> 7
+                : D == Direction::SOUTH_WEST ? (bb & ~FileABB) >> 9
+                : 0;
         }
+
+        Bitboard shift(Direction D, Bitboard bb);
+
+        std::string squaretostr(Square s);
+        std::string squaretostr(int s);
 	}
 }
 
@@ -242,7 +267,7 @@ struct BoardInfo
 class Board
 {
 private:
-    Bitboard board[SQ_NUM];
+    int board[SQ_NUM];
     Bitboard pieceBB[Seraphina::PieceType::NO_PIECETYPE];
     Bitboard occBB[Seraphina::Color::NO_COLOR + 1];
 	Bitboard SQbtw[SQ_NUM][SQ_NUM];
@@ -251,7 +276,8 @@ private:
 
     Seraphina::Color currentPlayer;
     Bitboard checkers;
-    Bitboard pinned;
+	Bitboard blockers[Seraphina::Color::NO_COLOR];
+    Bitboard pinners[Seraphina::Color::NO_COLOR];
     Bitboard threatened;
     Bitboard threatenedBy[6];
     int KingSQ;
@@ -272,6 +298,7 @@ public:
     Seraphina::NNUE::AccumulatorRefreshTable* accRT;
 
     int castling = 0;
+    int castlingRookSquare[4];
     int castling_rights[64] = {
          7, 15, 15, 15,  3, 15, 15, 11,
         15, 15, 15, 15, 15, 15, 15, 15,
@@ -282,6 +309,16 @@ public:
         15, 15, 15, 15, 15, 15, 15, 15,
         13, 15, 15, 15, 12, 15, 15, 14
     };
+
+	inline void addBoardInfo()
+	{
+		history.emplace_back();
+	}
+
+	inline void removeBoardInfo()
+	{
+		history.pop_back();
+	}
 
     inline BoardInfo* getBoardInfo()
     {
@@ -311,7 +348,17 @@ public:
         return (Seraphina::PieceType)board[sq];
     }
 
+    inline Seraphina::PieceType getBoard(int sq) const
+    {
+        return (Seraphina::PieceType)board[sq];
+    }
+
     inline U64 getPieceBB(Seraphina::PieceType pt) const
+    {
+        return pieceBB[pt];
+    }
+
+    inline U64 getPieceBB(int pt) const
     {
         return pieceBB[pt];
     }
@@ -328,6 +375,11 @@ public:
         return occBB[pov];
     }
 
+    inline U64 getoccBB(int pov) const
+    {
+        return occBB[pov];
+    }
+
     /*
     inline void FlipOccBB(Seraphina::Color pov, Seraphina::Square from, Seraphina::Square to)
     {
@@ -339,6 +391,11 @@ public:
 	{
 		return SQbtw[sq1][sq2];
 	}
+
+    inline U64 getSQbtw(int sq1, int sq2) const
+    {
+        return SQbtw[sq1][sq2];
+    }
 
     void initSQbtw();
 
@@ -414,12 +471,17 @@ public:
 
     inline void setRepititionIncremental()
     {
-        getBoardInfo()->repetition += 1;
+        ++getBoardInfo()->repetition;
     }
+
+	inline void resetRepitition()
+	{
+		getBoardInfo()->repetition = 0;
+	}
 
     inline int getFifty()
     {
-        return getBoardInfo()->fifty >> 1;
+        return getBoardInfo()->fifty;
     }
 
     inline void setFifty(int newFifty)
@@ -429,12 +491,17 @@ public:
 
     inline void setFiftyIncremental()
     {
-        getBoardInfo()->fifty += 1;
+        ++getBoardInfo()->fifty;
+    }
+
+    inline void resetFifty()
+    {
+		getBoardInfo()->fifty = 0;
     }
 
     inline void undoFiftyIncremental()
     {
-        getBoardInfo()->fifty -= 1;
+        --getBoardInfo()->fifty;
     }
 
     inline int getMoveNum()
@@ -449,12 +516,12 @@ public:
 
     inline void setMoveNumIncremental()
     {
-        movenum++;
+        ++movenum;
     }
 
     inline void undoMoveNumIncremental()
     {
-        movenum--;
+        --movenum;
     }
 
     inline int getpliesFromNull()
@@ -469,12 +536,12 @@ public:
 
     inline void setpliesFromNullIncremental()
 	{
-        getBoardInfo()->pliesFromNull += 1;
+        ++getBoardInfo()->pliesFromNull;
 	}
 
     inline void undopliesFromNullIncremental()
     {
-        getBoardInfo()->pliesFromNull -= 1;
+        --getBoardInfo()->pliesFromNull;
     }
 
     inline bool isChess960()
@@ -499,29 +566,59 @@ public:
 
     inline int getCastlingRights(int castlingtype)
     {
-        return (castling & Seraphina::Bitboards::bit(castlingtype));
+        return (castling & castlingtype);
+    }
+
+	inline int getCastlingRookSQ(int castlingtype)
+	{
+		return castlingRookSquare[castlingtype];
+	}
+
+	inline int getPieceCount(Seraphina::PieceList p)
+	{
+		return (pieceCount[Seraphina::makepiece(Seraphina::Color::WHITE, p)]
+            + pieceCount[Seraphina::makepiece(Seraphina::Color::BLACK, p)]);
+	}
+
+    inline int getNonPawns()
+    {
+        return(nonPawns[Seraphina::Color::WHITE] + nonPawns[Seraphina::Color::BLACK]);
     }
 
     Seraphina::PieceType getPieceType(Seraphina::Square sq) const;
+	Seraphina::PieceType getPieceType(int sq) const;
     void setPiece(Seraphina::Square sq, Seraphina::PieceType pt);
+	void setPiece(int sq, int pt);
     void removePiece(Seraphina::Square sq);
+    void removePiece(int sq);
     void replacePiece(Seraphina::Square sq, Seraphina::PieceType pt);
-    void setCPK();
+    void replacePiece(int sq, int pt);
+    void setCBP();
     void setThreats();
 
-    int getPieceValue(Seraphina::PieceType pt) const;
-    int countPiece(Seraphina::PieceType pt);
-	int countPieceValues(Seraphina::Color pov);
+	int getPieceCount(Seraphina::PieceType pt) const;
+    int getPieceValues(Seraphina::Color pov) const;
+    void countPiece();
+	void countPieceValues();
+	void addCount(Seraphina::PieceType pt);
+    void addCount(int pt);
+	void removeCount(Seraphina::PieceType pt);
+	void removeCount(int pt);
+	void addCountValues(Seraphina::PieceType pt);
+    void addCountValues(int pt);
+	void removeCountValues(Seraphina::PieceType pt);
+    void removeCountValues(int pt);
+    void addCountValues(Seraphina::PieceType pt, Seraphina::Color pov);
+    void removeCountValues(Seraphina::PieceType pt, Seraphina::Color pov);
 
     void parseFEN(char* fen);
     void BoardtoFEN(char* fen);
 
     Seraphina::Square getKingSquare(Seraphina::Color pov) const;
+    Seraphina::Square getKingSquare(int pov) const;
 
-    bool isChecked(Seraphina::Color pov) const;
-
-    bool isAttacked(Seraphina::Color pov, Seraphina::Square sq) const;
     Bitboard attackersTo(Seraphina::Square sq, Bitboard occupied) const;
+    Bitboard attackersTo(int sq, Bitboard occupied) const;
 
     bool isDraw(MoveList& movelist, int ply);
     bool isRepeated();

@@ -13,6 +13,8 @@
 
 #include <math.h>
 
+constexpr int PieceValue[13] = { 208, 781, 825, 1276, 2538, 32001, 208, 781, 825, 1276, 2538, 32001, 0 };
+
 int LMR[MAX_PLY][MAX_MOVES];
 int LMP[2][MAX_PLY];
 
@@ -31,14 +33,14 @@ namespace Seraphina
 		Square from = getFrom(move);
 		Square to = getTo(move);
 
-		int swap = board.getPieceValue(board.getBoard(to)) - threshold;
+		int swap = PieceValue[board.getBoard(to)] - threshold;
 
 		if (swap < 0)
 		{
 			return false;
 		}
 
-		swap = board.getPieceValue(board.getBoard(from)) - swap;
+		swap = PieceValue[board.getBoard(from)] - swap;
 
 		if (swap <= 0)
 		{
@@ -46,7 +48,7 @@ namespace Seraphina
 		}
 
 		int pov = board.currPOV();
-		Bitboard occ = board.getoccBB((Seraphina::Color)pov) ^ Seraphina::Bitboards::bit(from) ^ Seraphina::Bitboards::bit(to);
+		Bitboard occ = board.getoccBB(pov) ^ Seraphina::Bitboards::bit(from) ^ Seraphina::Bitboards::bit(to);
 		Bitboard attackers = board.attackersTo(to, occ);
 		Bitboard povAttackers, bb;
 		int res = 1;
@@ -66,14 +68,14 @@ namespace Seraphina
 			pov = ~pov;
 			attackers &= occ;
 
-			if (!(povAttackers = (attackers & board.getoccBB((Seraphina::Color)pov))))
+			if (!(povAttackers = (attackers & board.getoccBB(pov))))
 			{
 				break;
 			}
 
 			res ^= 1;
 
-			if (bb = povAttackers & board.getPieceBB(makepiece((Seraphina::Color)pov, Seraphina::PieceList::PAWN)))
+			if ((bb = povAttackers & board.getPieceBB(makepiece(pov, Seraphina::PieceList::PAWN))))
 			{
 				if ((swap = 208 - swap) < res)
 				{
@@ -83,7 +85,7 @@ namespace Seraphina
 				occ ^= (bb & -bb);
 				attackers |= Bitboards::getBishopAttacks(to, occ) & x;
 			}
-			else if (bb = povAttackers & board.getPieceBB(makepiece((Seraphina::Color)pov, Seraphina::PieceList::KNIGHT)))
+			else if ((bb = povAttackers & board.getPieceBB(makepiece(pov, Seraphina::PieceList::KNIGHT))))
 			{
 				if ((swap = 781 - swap) < res)
 				{
@@ -92,7 +94,7 @@ namespace Seraphina
 
 				occ ^= (bb & -bb);
 			}
-			else if (bb = povAttackers & board.getPieceBB(makepiece((Seraphina::Color)pov, Seraphina::PieceList::BISHOP)))
+			else if ((bb = povAttackers & board.getPieceBB(makepiece(pov, Seraphina::PieceList::BISHOP))))
 			{
 				if ((swap = 825 - swap) < res)
 				{
@@ -102,7 +104,7 @@ namespace Seraphina
 				occ ^= (bb & -bb);
 				attackers |= Bitboards::getBishopAttacks(to, occ) & x;
 			}
-			else if (bb = povAttackers & board.getPieceBB(makepiece((Seraphina::Color)pov, Seraphina::PieceList::ROOK)))
+			else if ((bb = povAttackers & board.getPieceBB(makepiece(pov, Seraphina::PieceList::ROOK))))
 			{
 				if ((swap = 1276 - swap) < res)
 				{
@@ -112,7 +114,7 @@ namespace Seraphina
 				occ ^= (bb & -bb);
 				attackers |= Bitboards::getRookAttacks(to, occ) & v;
 			}
-			else if (bb = povAttackers & board.getPieceBB(makepiece((Seraphina::Color)pov, Seraphina::PieceList::QUEEN)))
+			else if ((bb = povAttackers & board.getPieceBB(makepiece(pov, Seraphina::PieceList::QUEEN))))
 			{
 				if ((swap = 2538 - swap) < res)
 				{
@@ -124,7 +126,7 @@ namespace Seraphina
 			}
 			else
 			{
-				return (attackers & ~board.getoccBB((Seraphina::Color)pov)) ? res ^ 1 : res;
+				return (attackers & ~board.getoccBB(pov)) ? res ^ 1 : res;
 			}
 		}
 
@@ -134,21 +136,7 @@ namespace Seraphina
 	// LMR & LMP are inspired by Berserk
 	void Search::init()
 	{
-		move = depth = seldepth = nodes = score = previousScore = avgScore = multipv = time = 0;
-		pv = NULL;
 
-		for (int i = 0; i < MAX_PLY; i++)
-		{
-			for (int j = 0; j < MAX_MOVES; j++)
-			{
-				LMR[i][j] = log(i) * log(j) / 2.0385 + 0.2429;
-			}
-
-			LMP[0][i] = 1.3050 + 0.3503 * i * i;
-			LMP[1][i] = 2.1885 + 0.9911 * i * i;
-		}
-
-		LMR[0][0] = LMR[0][1] = LMR[1][0] = 0;
 	}
 
 	void Search::Root()
@@ -156,22 +144,20 @@ namespace Seraphina
 
 	}
 
-	int Search::alpha_beta(int alpha, int beta, int depth)
+	int Search::search(int alpha, int beta, int d)
 	{
+		Stack stack[MAX_PLY + 10];
+		Stack* ss = stack + 7;
 
+		return 0;
 	}
 
-	int Search::qsearch()
+	int Search::qsearch(Stack& ss, int alpha, int beta, int d)
 	{
-
+		return 0;
 	}
 
 	void Search::StartThinking(Board& board)
-	{
-
-	}
-
-	void Search::SearchClear()
 	{
 
 	}

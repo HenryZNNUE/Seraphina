@@ -1,11 +1,11 @@
-#pragma once
-
 // Seraphina is an Open-Source NNUE (Efficiently Updatable Neural Network) UCI Chess Engine
 // Features: Magic Bitboard, Alpha-Beta Pruning, NNUE, etc
 // Requriements: 64-bits Computers, Multiple CPU Architecture Support, Microsoft Windows or Linux Operating System
 // Seraphina's NNUE is trained by Grapheus, syzygy tablebase usage code from Fathom
 // Programmed By Henry Z
 // Special thanks to Luecx, Zomby, Slender(rafid-dev) and other Openbench Discord Members for their generous help of Seraphina NNUE training
+
+#pragma once
 
 #include <immintrin.h>
 
@@ -28,12 +28,15 @@ using vec_t = __m512i;
 #define vec_sub_16(a, b) _mm512_sub_epi16(a, b)
 #define vec_mul_16(a, b) _mm512_mullo_epi16(a, b)
 #define vec_zero() _mm512_setzero_epi32()
+#define vec_setzero() _mm512_setzero_si512()
 #define vec_set_16(a) _mm512_set1_epi16(a)
 #define vec_set_32(a) _mm512_set1_epi32(a)
 #define vec_max_16(a, b) _mm512_max_epi16(a, b)
 #define vec_max_32(a, b) _mm512_max_epi32(a, b)
 #define vec_min_32(a, b) _mm512_min_epi32(a, b)
 #define vec_cvt_8(a) _mm512_cvtepi32_epi8(a)
+#define vec_srai_16(a, b) _mm512_srai_epi16(a, b)
+#define vec_packs_16(a, b) _mm512_packs_epi16(a, b)
 #define REG_NUM 16
 #define CHUNK_SIZE 32
 #define vec_nnz(a) _mm512_cmpgt_epi32_mask(a, _mm512_setzero_si512())
@@ -47,19 +50,22 @@ using vec_t = __m256i;
 #define vec_sub_16(a, b) _mm256_sub_epi16(a, b)
 #define vec_mul_16(a, b) _mm256_mullo_epi16(a, b)
 #define vec_zero() _mm256_setzero_si256()
+#define vec_setzero() _mm256_setzero_si256()
 #define vec_set_16(a) _mm256_set1_epi16(a)
 #define vec_set_32(a) _mm256_set1_epi32(a)
 #define vec_max_16(a, b) _mm256_max_epi16(a, b)
 #define vec_max_32(a, b) _mm256_max_epi32(a, b)
 #define vec_min_32(a, b) _mm256_min_epi32(a, b)
 #define vec_cvt_8(a) _mm256_cvtepi32_epi8(a)
+#define vec_srai_16(a, b) _mm256_srai_epi16(a, b)
+#define vec_packs_16(a, b) _mm256_packs_epi16(a, b)
 #define REG_NUM 16
 #define CHUNK_SIZE 32
 #define vec_nnz(a) _mm256_movemask_ps(_mm256_castsi256_ps(_mm256_cmpgt_epi32(a, _mm256_setzero_si256())))
 #endif
 
 // Seraphina NNUE Format: Seraphina-[SHA256 first 12 digits]-version.nnue
-#define Seraphina_NNUE "S2.nnue"
+#define Seraphina_NNUE "S6.nnue"
 
 // 3072 -> 16 -> 32 -> 1 NNUE Structure
 #define KING_BUCKETS 32
@@ -106,8 +112,8 @@ namespace Seraphina
             int16_t acc[2][HIDDEN];
             bool computed[Color::NO_COLOR];
 
-            bool RequireRefresh(Move& move, Color pov);
-            bool updatable(Accumulator* acc, Move& move, Color pov);
+            bool RequireRefresh(Move& move, int pov);
+            bool updatable(Accumulator* acc, Move& move, int pov);
 
             void add_accumulator(int16_t* input, int16_t* output, Delta* delta);
         };
@@ -115,7 +121,7 @@ namespace Seraphina
         // Finny Table
         struct alignas(64) AccumulatorRefreshTableEntry
         {
-            int16_t acc[HIDDEN];
+            Accumulator acc;
             U64 colorpiece[Color::NO_COLOR][PieceList::NO_PIECE + 1];
         };
 
@@ -123,14 +129,16 @@ namespace Seraphina
         {
             AccumulatorRefreshTableEntry table[SQ_NUM];
 
-            void ApplyRefresh(Board& board, Color pov);
+            void ApplyRefresh(Board& board, int pov);
             void ResetTable();
         };
 
+        void* aligned_malloc(size_t size, size_t alignment);
+
         void init();
         void load_external(std::string& path);
-        void update_accumulator(Board& board, const Move& move, Color pov);
-        void reset_accumulator(Board& board, Color pov);
+        void update_accumulator(Board& board, const Move& move, int pov);
+        void reset_accumulator(Board& board, int pov);
         void L1_forward(int8_t* input, uint8_t* output);
         void L2_forward(uint8_t* input, uint8_t* output);
         void L3_forward(uint8_t* input, int32_t* output);
