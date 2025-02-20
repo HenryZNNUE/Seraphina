@@ -274,14 +274,14 @@ private:
 	int pieceCount[Seraphina::PieceType::NO_PIECETYPE];
 	int nonPawns[Seraphina::Color::NO_COLOR];
 
-    Seraphina::Color currentPlayer;
+    Seraphina::Color pov;
     Bitboard checkers;
 	Bitboard blockers[Seraphina::Color::NO_COLOR];
     Bitboard pinners[Seraphina::Color::NO_COLOR];
     Bitboard threatened;
     Bitboard threatenedBy[6];
-    int KingSQ;
-    int movenum;
+    int KingSQ = 0;
+    int movenum = 0;
 
     std::vector<BoardInfo> history;
 
@@ -370,14 +370,14 @@ public:
     }
     */
 
-    inline U64 getoccBB(Seraphina::Color pov) const
+    inline U64 getoccBB(Seraphina::Color c) const
     {
-        return occBB[pov];
+        return occBB[c];
     }
 
-    inline U64 getoccBB(int pov) const
+    inline U64 getoccBB(int c) const
     {
-        return occBB[pov];
+        return occBB[c];
     }
 
     /*
@@ -399,15 +399,18 @@ public:
 
     void initSQbtw();
 
-    inline Seraphina::Color currPOV() const
+    inline Seraphina::Color get_pov() const
     {
-        return currentPlayer;
+        return pov;
     }
 
-    inline void setPOV(Seraphina::Color pov)
+    inline void set_pov(Seraphina::Color c)
     {
-		currentPlayer = pov;
+		pov = c;
 	}
+
+    // Seraphina::Direction where_to_push();
+    int where_to_push();
 
 	inline Bitboard getCheckers() const
 	{
@@ -576,8 +579,8 @@ public:
 
 	inline int getPieceCount(Seraphina::PieceList p)
 	{
-		return (pieceCount[Seraphina::makepiece(Seraphina::Color::WHITE, p)]
-            + pieceCount[Seraphina::makepiece(Seraphina::Color::BLACK, p)]);
+		return (pieceCount[Seraphina::make_piece(Seraphina::Color::WHITE, p)]
+            + pieceCount[Seraphina::make_piece(Seraphina::Color::BLACK, p)]);
 	}
 
     inline int getNonPawns()
@@ -608,17 +611,20 @@ public:
     void addCountValues(int pt);
 	void removeCountValues(Seraphina::PieceType pt);
     void removeCountValues(int pt);
-    void addCountValues(Seraphina::PieceType pt, Seraphina::Color pov);
-    void removeCountValues(Seraphina::PieceType pt, Seraphina::Color pov);
+    void addCountValues(Seraphina::PieceType pt, Seraphina::Color c);
+    void removeCountValues(Seraphina::PieceType pt, Seraphina::Color c);
 
     void parseFEN(char* fen);
     void BoardtoFEN(char* fen);
 
-    Seraphina::Square getKingSquare(Seraphina::Color pov) const;
-    Seraphina::Square getKingSquare(int pov) const;
+    Seraphina::Square getKingSquare(Seraphina::Color c) const;
+    Seraphina::Square getKingSquare(int c) const;
 
     Bitboard attackersTo(Seraphina::Square sq, Bitboard occupied) const;
     Bitboard attackersTo(int sq, Bitboard occupied) const;
+
+    bool isAttacked(Seraphina::Square sq, Bitboard occupied, Seraphina::Color c) const;
+    bool isAttacked(int sq, Bitboard occupied, int c) const;
 
     bool isDraw(MoveList& movelist, int ply);
     bool isRepeated();

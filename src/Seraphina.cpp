@@ -13,8 +13,6 @@
 #include <chrono>
 
 #include "uci.h"
-#include "bitboard.h"
-#include "movegen.h"
 
 namespace Seraphina
 {
@@ -42,19 +40,10 @@ namespace Seraphina
         std::cout << Bold(unix_style) << Cyan(unix_style)
             << "          |\n\n" << Vanilla(unix_style);
     }
-
-    void Evil()
-    {
-#if defined _WIN64 && defined EVIL // Compatible with Microsoft Windows
-        SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
-#endif
-    }
 }
 
 int main()
 {
     Seraphina::UI(); // Print Engine's Name, Logo & Version
-    Seraphina::Evil(); // Set Engine's Priority to High if "EVIL" is defined
-	// Seraphina::MoveGenTest(); // Test Move Generation
     std::cin.get();
 }

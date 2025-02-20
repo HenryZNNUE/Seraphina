@@ -36,7 +36,7 @@ namespace Seraphina
 			}
 		}
 
-		int eval = NNUE::forward(*board.acc, board.currPOV());
+		int eval = NNUE::forward(*board.acc, board.get_pov());
 
 		eval = (131 * eval - 5 * SimpleEval(board)) / 128;
 		eval = (eval / 16) * 16 - 1 + (board.getZobrist() & 2); // tests should be made to see the gain
@@ -48,11 +48,12 @@ namespace Seraphina
 	void TraceEval(Board& board)
 	{
 		board.acc = static_cast<NNUE::Accumulator*>(NNUE::aligned_malloc(sizeof(NNUE::Accumulator), 64));
+		Color pov = board.get_pov();
 
 		NNUE::reset_accumulator(board, Color::WHITE);
 		NNUE::reset_accumulator(board, Color::BLACK);
 
-		int eval = NNUE::forward(*board.acc, board.currPOV());
+		int eval = NNUE::forward(*board.acc, pov);
 
 		std::cout << "NNUE Evaluation " << cp(board, eval) * 0.01 << "\n";
 
@@ -60,7 +61,7 @@ namespace Seraphina
 		eval = (eval / 16) * 16 - 1 + (board.getZobrist() & 2);
 		eval -= eval * board.getFifty() / 256;
 		eval = std::clamp(eval, -31486, 31486);
-		eval = board.currPOV() == Color::WHITE ? eval : -eval;
+		eval = pov == Color::WHITE ? eval : -eval;
 
 		std::cout << "Final Evaluation " << cp(board, eval) * 0.01 << "\n";
 

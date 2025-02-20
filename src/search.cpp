@@ -20,6 +20,13 @@ int LMP[2][MAX_PLY];
 
 namespace Seraphina
 {
+	// https://en.cppreference.com/w/cpp/chrono/time_point/time_since_epoch
+	Time now()
+	{
+		return std::chrono::duration_cast<std::chrono::milliseconds>
+			(std::chrono::system_clock::now().time_since_epoch()).count();
+	}
+
 	bool SEE(Board& board, Move& move, int threshold)
 	{
 		MoveType mt = getMoveType(move);
@@ -47,7 +54,7 @@ namespace Seraphina
 			return true;
 		}
 
-		int pov = board.currPOV();
+		int pov = board.get_pov();
 		Bitboard occ = board.getoccBB(pov) ^ Seraphina::Bitboards::bit(from) ^ Seraphina::Bitboards::bit(to);
 		Bitboard attackers = board.attackersTo(to, occ);
 		Bitboard povAttackers, bb;
@@ -75,7 +82,7 @@ namespace Seraphina
 
 			res ^= 1;
 
-			if ((bb = povAttackers & board.getPieceBB(makepiece(pov, Seraphina::PieceList::PAWN))))
+			if ((bb = povAttackers & board.getPieceBB(make_piece(pov, Seraphina::PieceList::PAWN))))
 			{
 				if ((swap = 208 - swap) < res)
 				{
@@ -85,7 +92,7 @@ namespace Seraphina
 				occ ^= (bb & -bb);
 				attackers |= Bitboards::getBishopAttacks(to, occ) & x;
 			}
-			else if ((bb = povAttackers & board.getPieceBB(makepiece(pov, Seraphina::PieceList::KNIGHT))))
+			else if ((bb = povAttackers & board.getPieceBB(make_piece(pov, Seraphina::PieceList::KNIGHT))))
 			{
 				if ((swap = 781 - swap) < res)
 				{
@@ -94,7 +101,7 @@ namespace Seraphina
 
 				occ ^= (bb & -bb);
 			}
-			else if ((bb = povAttackers & board.getPieceBB(makepiece(pov, Seraphina::PieceList::BISHOP))))
+			else if ((bb = povAttackers & board.getPieceBB(make_piece(pov, Seraphina::PieceList::BISHOP))))
 			{
 				if ((swap = 825 - swap) < res)
 				{
@@ -104,7 +111,7 @@ namespace Seraphina
 				occ ^= (bb & -bb);
 				attackers |= Bitboards::getBishopAttacks(to, occ) & x;
 			}
-			else if ((bb = povAttackers & board.getPieceBB(makepiece(pov, Seraphina::PieceList::ROOK))))
+			else if ((bb = povAttackers & board.getPieceBB(make_piece(pov, Seraphina::PieceList::ROOK))))
 			{
 				if ((swap = 1276 - swap) < res)
 				{
@@ -114,7 +121,7 @@ namespace Seraphina
 				occ ^= (bb & -bb);
 				attackers |= Bitboards::getRookAttacks(to, occ) & v;
 			}
-			else if ((bb = povAttackers & board.getPieceBB(makepiece(pov, Seraphina::PieceList::QUEEN))))
+			else if ((bb = povAttackers & board.getPieceBB(make_piece(pov, Seraphina::PieceList::QUEEN))))
 			{
 				if ((swap = 2538 - swap) < res)
 				{

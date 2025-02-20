@@ -127,6 +127,18 @@ static int m256_hadd(__m256i sum, int bias)
 	return _mm_cvtsi128_si32(sum128) + bias;
 }
 
+__m128i vec_cvt_8(__m256i a)
+{
+	__m128i lo = _mm256_extracti128_si256(a, 0);
+	__m128i hi = _mm256_extracti128_si256(a, 1);
+	lo = _mm_packus_epi32(lo, _mm_setzero_si128());
+	hi = _mm_packus_epi32(hi, _mm_setzero_si128());
+	lo = _mm_packus_epi16(lo, _mm_setzero_si128());
+	hi = _mm_packus_epi16(hi, _mm_setzero_si128());
+
+	return _mm_unpacklo_epi64(lo, hi);
+}
+
 #endif
 
 constexpr int32_t width = BIT_ALIGNMENT / CHUNK_SIZE;
@@ -166,7 +178,7 @@ namespace Seraphina
 
 		inline int FeatureIndex(int piece, int sq, int kingsq, const int view)
 		{
-			int oP = 6 * ((piece ^ view) & 0x1) + getpiece((PieceType)piece);
+			int oP = 6 * ((piece ^ view) & 0x1) + get_piece((PieceType)piece);
 			int oK = (7 * !(kingsq & 4)) ^ (56 * view) ^ kingsq;
 			int oSq = (7 * !(kingsq & 4)) ^ (56 * view) ^ sq;
 
@@ -403,7 +415,7 @@ namespace Seraphina
 
 		bool Accumulator::RequireRefresh(Move& move, int pov)
 		{
-			if (getpiece(getPieceType(move)) == PieceList::KING)
+			if (get_piece(getPieceType(move)) == PieceList::KING)
 			{
 				return true;
 			}
@@ -417,7 +429,7 @@ namespace Seraphina
 			{
 				--accum;
 
-				if (getcolor(getPieceType(move)) == pov && RequireRefresh(move, pov))
+				if (get_color(getPieceType(move)) == pov && RequireRefresh(move, pov))
 				{
 					return false;
 				}
@@ -484,7 +496,7 @@ namespace Seraphina
 			{
 				for (int p = PAWN; p < NO_PIECE; ++p)
 				{
-					const PieceType pt = makepiece(c, p);
+					const PieceType pt = make_piece(c, p);
 					const Bitboard pieceBB = board.getPieceBB(pt);
 					const Bitboard entryBB = entry.colorpiece[c][p];
 
@@ -657,21 +669,21 @@ namespace Seraphina
 			init();
 		}
 
-		void update_accumulator(Board& board, const Move& move, int pov)
+		void update_accumulator(Board& board, const Move& move, int c)
 		{
 			Accumulator* newacc = board.acc;
 
-			while (!(--newacc)->computed[pov]);
+			while (!(--newacc)->computed[c]);
 
 			do
 			{
-				const auto input = newacc->acc[pov];
-				const auto output = (newacc++)->acc[pov];
-				const int KingSq = board.getKingSquare(pov);
-				const Color currPOV = board.currPOV();
+				const auto input = newacc->acc[c];
+				const auto output = (newacc++)->acc[c];
+				const int KingSq = board.getKingSquare(c);
+				const Color pov = board.get_pov();
 				MoveType mt = getMoveType(move);
-				int16_t from = FeatureIndex(getPieceType(move), getFrom(move), KingSq, pov);
-				int16_t to = FeatureIndex(getPieceType(move), getTo(move), KingSq, pov);
+				int16_t from = FeatureIndex(getPieceType(move), getFrom(move), KingSq, c);
+				int16_t to = FeatureIndex(getPieceType(move), getTo(move), KingSq, c);
 
 				/*
 				int16_t to = FeatureIndex((mt == MoveType::PROMOTION || mt == MoveType::PROMOTION_CAPTURE)
@@ -681,40 +693,40 @@ namespace Seraphina
 
 				if (mt == MoveType::PROMOTION)
 				{
-					to = FeatureIndex(getCapPromo(move), getTo(move), KingSq, pov);
+					to = FeatureIndex(getCapPromo(move), getTo(move), KingSq, c);
 				}
 
 				if (mt == MoveType::PROMOTION_CAPTURE)
 				{
-					to = FeatureIndex(board.getBoardInfo()->capture, getTo(move), KingSq, pov);
+					to = FeatureIndex(board.getBoardInfo()->capture, getTo(move), KingSq, c);
 				}
 
 				if (mt == MoveType::SHORT_CASTLE)
 				{
-					int16_t rookFrom = FeatureIndex(makepiece(currPOV, ROOK), (currPOV == Color::WHITE ? Square::SQ_H1 : Square::SQ_H8), KingSq, pov);
-					int16_t rookTo = FeatureIndex(makepiece(currPOV, ROOK), (currPOV == Color::WHITE ? Square::SQ_F1 : Square::SQ_F8), KingSq, pov);
+					int16_t rookFrom = FeatureIndex(make_piece(pov, ROOK), (pov == Color::WHITE ? Square::SQ_H1 : Square::SQ_H8), KingSq, c);
+					int16_t rookTo = FeatureIndex(make_piece(pov, ROOK), (pov == Color::WHITE ? Square::SQ_F1 : Square::SQ_F8), KingSq, c);
 
 					remove_remove_add_add(input, output, from, rookFrom, to, rookTo);
 				}
 
 				else if (mt == MoveType::LONG_CASTLE)
 				{
-					int16_t rookFrom = FeatureIndex(makepiece(currPOV, ROOK), (currPOV == Color::WHITE ? Square::SQ_A1 : Square::SQ_A8), KingSq, pov);
-					int16_t rookTo = FeatureIndex(makepiece(currPOV, ROOK), (currPOV == Color::WHITE ? Square::SQ_D1 : Square::SQ_D8), KingSq, pov);
+					int16_t rookFrom = FeatureIndex(make_piece(pov, ROOK), (pov == Color::WHITE ? Square::SQ_A1 : Square::SQ_A8), KingSq, c);
+					int16_t rookTo = FeatureIndex(make_piece(pov, ROOK), (pov == Color::WHITE ? Square::SQ_D1 : Square::SQ_D8), KingSq, c);
 
 					remove_remove_add_add(input, output, from, rookFrom, to, rookTo);
 				}
 
 				else if (mt == MoveType::CAPTURE)
 				{
-					int16_t captured = FeatureIndex(getCaptured(move), getTo(move), KingSq, pov);
+					int16_t captured = FeatureIndex(getCaptured(move), getTo(move), KingSq, c);
 
 					remove_remove_add(input, output, from, captured, to);
 				}
 
 				else if (mt == MoveType::ENPASSNT)
 				{
-					int16_t captured = FeatureIndex(getCaptured(move), getTo(move) - (getcolor(getPieceType(move)) == Color::WHITE ? Direction::NORTH : Direction::SOUTH), KingSq, pov);
+					int16_t captured = FeatureIndex(getCaptured(move), getTo(move) - (get_color(getPieceType(move)) == Color::WHITE ? Direction::NORTH : Direction::SOUTH), KingSq, c);
 
 					remove_remove_add(input, output, from, captured, to);
 				}
@@ -724,28 +736,28 @@ namespace Seraphina
 					remove_add(input, output, from, to);
 				}
 
-				(newacc + 1)->computed[pov] = true;
+				(newacc + 1)->computed[c] = true;
 			} while (++newacc != board.acc);
 		}
 
-		void reset_accumulator(Board& board, int pov)
+		void reset_accumulator(Board& board, int c)
 		{
 			Delta delta[1];
 			delta->a = delta->r = 0;
-			int KingSq = board.getKingSquare(pov);
+			int KingSq = board.getKingSquare(c);
 			Bitboard occBB = board.getoccBB(Color::NO_COLOR);
 
 			while (occBB)
 			{
 				const Square sq = Bitboards::poplsb(occBB);
 				const PieceType pt = board.getPieceType(sq);
-				delta->added[delta->a++] = FeatureIndex(pt, sq, KingSq, pov);
+				delta->added[delta->a++] = FeatureIndex(pt, sq, KingSq, c);
 			}
 
-			int16_t* acc = board.acc->acc[pov];
+			int16_t* acc = board.acc->acc[c];
 			std::memcpy(acc, input_bias, sizeof(int16_t) * HIDDEN);
 			board.acc->add_accumulator(acc, acc, delta);
-			board.acc->computed[pov] = true;
+			board.acc->computed[c] = true;
 		}
 
 		void L1_forward(int8_t* input, uint8_t* output)
@@ -862,14 +874,14 @@ namespace Seraphina
 #endif
 		}
 
-		int forward(Accumulator& acc, Color pov)
+		int forward(Accumulator& acc, Color c)
 		{
 			alignas(64) int8_t ft_output[L1];
 			alignas(64) uint8_t l1_output[L2];
 			alignas(64) uint8_t l2_output[L3];
 			int32_t eval;
 
-			InputClippedReLU(&acc, ft_output, pov);
+			InputClippedReLU(&acc, ft_output, c);
 
 			L1_forward(ft_output, l1_output);
 			L2_forward(l1_output, l2_output);
@@ -883,7 +895,7 @@ namespace Seraphina
 			reset_accumulator(board, Color::WHITE);
 			reset_accumulator(board, Color::BLACK);
 
-			return forward(*board.acc, board.currPOV());
+			return forward(*board.acc, board.get_pov());
 		}
 	}
 }

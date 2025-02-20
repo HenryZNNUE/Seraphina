@@ -17,7 +17,7 @@
 namespace Seraphina
 {
 	// https://github.com/official-stockfish/Stockfish/blob/master/src/thread_win32_osx.h
-	// https://stackoverflow.org.cn/questions/13871763
+	// https://stackoverflow.com/questions/13871763/how-to-set-the-stacksize-with-c11-stdthread
 #if defined (__MINGW64__)
 #include <functional>
 #include <pthread.h>

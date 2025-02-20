@@ -10,59 +10,17 @@
 #include "types.h"
 #include <vector>
 
-/*
-* A Detailed decription of Seraphina's Move storage philosophy
-* Modified from Koivisto by Luecx
-* 
-* 00000000 0000 0000 0000 000000 000000
-* |        |    |    |    |      |      Square From
-* |        |    |    |    |      +------
-* |        |    |    |    |             Square To
-* |        |    |    |    +-------------
-* |        |    |    |                  Moving Piece Type
-* |        |    |    +------------------
-* |        |    |                       Move Type
-* |        |    +-----------------------
-* |        |                            Captured / Promoted Piece
-* |        +----------------------------
-* |                                     Score
-* +-------------------------------------
-*/
-
 class Board;
 
 namespace Seraphina
 {
-	// Thanks to Luecx's Koivisto codes,
-	// which let me learn the necessity of "inline"
-	// that can help avoid the frequent stack operation
-	// Also, use const reference here which can avoid copying, improve performance
-	// Here are "get" functions
 	inline Square getFrom(const Move& move)
 	{
-		// Explaination: squareFrom is located at 0 ~ 6 bits in a move
-		// therefore there is no need to right shift the move in order to align the required part
-		// (1ULL << 6) could be: 1111 ... 1111 1100 0000
-		// after - 1: 1111 ... 1111 1011 1111
-		// as move undergos bitwise and, it will be like this if From Square is E1: ... 0100
-		// as (Square) type is int, therefore, the result will be 4
-		// Cool! Isn't it?
-		// static_cast<type>(data); is used to convert data type
 		return (Square)(move & ((1ULL << 6) - 1));
 	}
 
 	inline Square getTo(const Move& move)
 	{
-		// Explaination: squareFrom is located at 6 ~ 12 bits in a move
-		// it's necessary to right shift the move by 6 in order to align the required part
-		// like this:     1111      ->     1111
-		//            (6 ~ 12 bits)    (0 ~ 6 bits)
-		// (1ULL << 6) could be: 1111 ... 1111 1100 0000
-		// after - 1: 1111 ... 1111 1011 1111
-		// as move undergos bitwise and, it will be like this if To Square is E1: ... 0100
-		// as (Square) type is int, therefore, the result will be 4
-		// Cool! Isn't it?
-		// static_cast<type>(data); is used to convert data type
 		return (Square)((move >> 6) & ((1ULL << 6) - 1));
 	}
 
@@ -96,7 +54,6 @@ namespace Seraphina
 		return (Score)((move >> 24) & ((1ULL << 8) - 1));
 	}
 
-	// Here are "set" functions
 	inline void setFrom(Move& move, Square from)
 	{
 		move |= from;

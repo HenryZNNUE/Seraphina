@@ -37,6 +37,7 @@ namespace Seraphina
 		PieceToCorrectionHistory* continuationCorrectionHistory;
 	};
 
+	Time now();
 	bool SEE(Board& board, Move& move, int threshold);
 
 	class Search

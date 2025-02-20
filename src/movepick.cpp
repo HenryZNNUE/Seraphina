@@ -68,7 +68,7 @@ namespace Seraphina
 	void MovePicker::score(Board& board)
 	{
 		Bitboard threatenedByPawn, threatenedByMinor, threatenedByRook, threatenedPieces;
-		Color pov = board.currPOV();
+		Color pov = board.get_pov();
 		int value = 0;
 
 		if (mt == MoveType::NORMAL)
@@ -76,9 +76,9 @@ namespace Seraphina
 			threatenedByPawn = board.getThreatenedBy(PieceList::PAWN);
 			threatenedByMinor = threatenedByPawn | board.getThreatenedBy(PieceList::KNIGHT) | board.getThreatenedBy(PieceList::BISHOP);
 			threatenedByRook = threatenedByMinor | board.getThreatenedBy(PieceList::ROOK);
-			threatenedPieces = (board.getPieceBB(makepiece(pov, PieceList::QUEEN)) & threatenedByRook)
-				| (board.getPieceBB(makepiece(pov, PieceList::ROOK)) & threatenedByMinor)
-				| ((board.getPieceBB(makepiece(pov, PieceList::KNIGHT)) | board.getPieceBB(makepiece(pov, PieceList::BISHOP))) & threatenedByPawn);
+			threatenedPieces = (board.getPieceBB(make_piece(pov, PieceList::QUEEN)) & threatenedByRook)
+				| (board.getPieceBB(make_piece(pov, PieceList::ROOK)) & threatenedByMinor)
+				| ((board.getPieceBB(make_piece(pov, PieceList::KNIGHT)) | board.getPieceBB(make_piece(pov, PieceList::BISHOP))) & threatenedByPawn);
 		}
 
 		const Bitboard threats[3] = { threatenedByPawn, threatenedByMinor, threatenedByRook };
@@ -89,13 +89,13 @@ namespace Seraphina
 			const Square from = getFrom(move);
 			const Square to = getTo(move);
 			const PieceType pt = getPieceType(move);
-			const PieceList p = getpiece(pt);
+			const PieceList p = get_piece(pt);
 			// const int captured = getMoveType(move) == MoveType::ENPASSNT ? PieceList::PAWN : getpiece(board.getPieceType(to));
 
 			if (mt == MoveType::CAPTURE || mt == MoveType::PROMOTION_CAPTURE)
 			{
 				value = 7 * PieceValue[board.getBoard(to)]
-					+ (*captureHistory)[getpiece(board.getBoard(to))][pt][to];
+					+ (*captureHistory)[get_piece(board.getBoard(to))][pt][to];
 			}
 
 			else if (mt == MoveType::NORMAL)
@@ -109,7 +109,7 @@ namespace Seraphina
 
 			else
 			{
-				if (getpiece(getCapPromo(move)) == PieceList::QUEEN)
+				if (get_piece(getCapPromo(move)) == PieceList::QUEEN)
 				{
 					value = PieceValue[board.getBoard(to)] - pt + (1 << 28);
 				}

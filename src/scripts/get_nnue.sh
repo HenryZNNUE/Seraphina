@@ -12,17 +12,17 @@ function get_nnue {
     if [ -f "$nnue_file" ]; then
         echo -e "Seraphina NNUE File already exists -> Skipping download"
     elif command -v wget > /dev/null; then
-        echo -e "Downloading latest Seraphina nnue weights...${blue}"
+        echo -e "Downloading ${nnue_file}...${blue}"
         wget -O "$nnue_file" "$url" --no-check-certificate
     elif command -v curl > /dev/null; then
-    echo -e "Downloading latest Seraphina nnue weights...${blue}"
+    echo -e "Downloading ${nnue_file}...${blue}"
         curl -o "$nnue_file" "$url"
     else
         echo -e "${red}Error: ${yellow}Neither wget nor curl is installed"
         return 1
     fi
 
-    echo -e "${cyan}---NNUE File Download Finished---\n${default}"
+    echo -e "${cyan}---NNUE Download Finished---\n${default}"
     return 0
 }
 

@@ -13,16 +13,17 @@ PARAMS  = -DVERSION=\"$(VERSION)\" -DEVALFILE=\"$(EVALFILE)\"
 # Flags
 STD    = -std=c++17
 LIBS   = -pthread
-WARN   = -Wall -Wextra -Wshadow
+# WARN   = -Wall -Wextra -Wshadow
 
-FLAGS   = $(STD) $(WARN) -g -O3 -flto $(PARAMS) -fno-math-errno -funroll-loops -fno-exceptions -static -static-libgcc -static-libstdc++ -pthread
+OPT = -O3 -flto -fno-math-errno -funroll-loops -fno-exceptions
+FLAGS   = $(STD) $(PARAMS) $(OPT) -s -pthread -static -DNDEBUG
 M64     = -m64 -mpopcnt
 MSSE2   = $(M64) -msse -msse2
 MSSSE3  = $(MSSE2) -mssse3
 MAVX2   = $(MSSSE3) -msse4.1 -mbmi -mfma -mavx2
 MAVX512 = $(MAVX2) -mavx512f -mavx512bw
-MAVX256VNNI = $(MAVX256) -mavx256vnni -mprefer-vector-width=256
-MAVX512VNNI = $(MAVX512) -mavx512vnni -mprefer-vector-width=512
+MAVX256VNNI = $(MAVX512) -mavx512vnni -mavx512dq -mavx512vl -mprefer-vector-width=256
+MAVX512VNNI = $(MAVX512) -mavx512vnni -mavx512dq -mavx512vl -mprefer-vector-width=512
 
 # Detecting windows
 ifeq ($(shell echo "test"), "test")
@@ -56,16 +57,13 @@ else ifeq ($(findstring vnni512, $(ARCH)), vnni512)
 	CXXFLAGS = $(FLAGS) $(MAVX512VNNI)
 endif
 
-ifeq ($(Evil), yes)
-    CXXFLAGS += -DEVIL
-	EXE = Seraphina-$(VERSION)-$(ARCH)-Evil
-endif
-
 cyan='\e[1;96m'
 blue='\e[1;94m'
+yellow='\e[1;93m'
 default='\e[0m'
 
 download_nnue:
+	@echo -e $(yellow)
 	sh ./scripts/get_nnue.sh
 
 build: download_nnue

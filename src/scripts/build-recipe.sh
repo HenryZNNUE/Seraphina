@@ -1,0 +1,1 @@
+g++ -std=c++20 -O3 -s -o Recipe Recipe.cpp

@@ -56,7 +56,6 @@ using vec_t = __m256i;
 #define vec_max_16(a, b) _mm256_max_epi16(a, b)
 #define vec_max_32(a, b) _mm256_max_epi32(a, b)
 #define vec_min_32(a, b) _mm256_min_epi32(a, b)
-#define vec_cvt_8(a) _mm256_cvtepi32_epi8(a)
 #define vec_srai_16(a, b) _mm256_srai_epi16(a, b)
 #define vec_packs_16(a, b) _mm256_packs_epi16(a, b)
 #define REG_NUM 16
@@ -65,7 +64,7 @@ using vec_t = __m256i;
 #endif
 
 // Seraphina NNUE Format: Seraphina-[SHA256 first 12 digits]-version.nnue
-#define Seraphina_NNUE "S6.nnue"
+#define Seraphina_NNUE "Seraphina-0a877e853540.nnue"
 
 // 3072 -> 16 -> 32 -> 1 NNUE Structure
 #define KING_BUCKETS 32
@@ -137,12 +136,12 @@ namespace Seraphina
 
         void init();
         void load_external(std::string& path);
-        void update_accumulator(Board& board, const Move& move, int pov);
-        void reset_accumulator(Board& board, int pov);
+        void update_accumulator(Board& board, const Move& move, int c);
+        void reset_accumulator(Board& board, int c);
         void L1_forward(int8_t* input, uint8_t* output);
         void L2_forward(uint8_t* input, uint8_t* output);
         void L3_forward(uint8_t* input, int32_t* output);
-        int forward(Accumulator& acc, Color pov);
+        int forward(Accumulator& acc, Color c);
         int predict(Board& board);
 	}
 }

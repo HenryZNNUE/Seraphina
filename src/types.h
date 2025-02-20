@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <chrono>
 #include <cstdint>
 #include <iostream>
 #include <string>
@@ -21,7 +22,7 @@
 #define Name "Seraphina"
 
 // Engine Official Release Version
-#define Version "dev-NNUE-S6"
+#define Version "v1"
 
 // Author Name
 #define Author "Henry Z"
@@ -55,6 +56,8 @@ using Move = uint32_t;
 
 // Use Signed 8 bits to store score information
 using Score = int8_t;
+
+using Time = std::chrono::milliseconds::rep;
 
 namespace Seraphina
 {
@@ -142,7 +145,7 @@ namespace Seraphina
         SOUTH_EAST = -7
     };
 
-    constexpr PieceType chartopiece(char f)
+    constexpr PieceType char_to_piece(char f)
     {
         if (f == 'P') return WHITE_PAWN;
         if (f == 'N') return WHITE_KNIGHT;
@@ -161,7 +164,7 @@ namespace Seraphina
 		return NO_PIECETYPE;
     }
 
-    constexpr char piecetochar(PieceType pt)
+    constexpr char piece_to_char(PieceType pt)
     {
         /*
         if (pt == WHITE_PAWN) return 'P';
@@ -184,7 +187,7 @@ namespace Seraphina
         return PIECETYPE_CHARS[pt];
 	}
 
-    constexpr PieceList chartopieceNOPOV(char f)
+    constexpr PieceList char_to_piece_no_pov(char f)
     {
         if (f == 'P' || f == 'p') return PAWN;
         if (f == 'N' || f == 'n') return KNIGHT;
@@ -196,7 +199,7 @@ namespace Seraphina
 		return NO_PIECE;
     }
 
-    constexpr char piecetocharNOPOV(PieceList p)
+    constexpr char piece_to_char_no_pov(PieceList p)
     {
         /*
         if (p == PAWN) return 'P';
@@ -210,72 +213,72 @@ namespace Seraphina
         return PIECETYPE_CHARS[p];
     }
 
-    constexpr Square makesquare(File f, Rank r)
+    constexpr Square make_square(File f, Rank r)
 	{
         return (Square)(f + r * 8);
     }
 
-    constexpr Square makesquare(int f, int r)
+    constexpr Square make_square(int f, int r)
     {
         return (Square)(f + r * 8);
     }
 
-    constexpr File getfile(Square s)
+    constexpr File get_file(Square s)
 	{
 		return (File)(s & 7);
 	}
 
-    constexpr File getfile(int s)
+    constexpr File get_file(int s)
     {
         return (File)(s & 7);
     }
 
-    constexpr Rank getrank(Square s)
+    constexpr Rank get_rank(Square s)
     {
         return (Rank)(s >> 3);
     }
 
-    constexpr Rank getrank(int s)
+    constexpr Rank get_rank(int s)
     {
         return (Rank)(s >> 3);
     }
 
-    constexpr PieceType makepiece(Color c, PieceList p)
+    constexpr PieceType make_piece(Color c, PieceList p)
     {
 		return (PieceType)(c * 6 + p);
 	}
 
-    constexpr PieceType makepiece(int c, PieceList p)
+    constexpr PieceType make_piece(int c, PieceList p)
     {
         return (PieceType)(c * 6 + p);
     }
 
-    constexpr PieceType makepiece(Color c, int p)
+    constexpr PieceType make_piece(Color c, int p)
     {
         return (PieceType)(c * 6 + p);
     }
 
-    constexpr PieceType makepiece(int c, int p)
+    constexpr PieceType make_piece(int c, int p)
     {
         return (PieceType)(c * 6 + p);
     }
 
-    constexpr Color getcolor(PieceType pt)
+    constexpr Color get_color(PieceType pt)
     {
 		return (Color)(pt / 6);
 	}
 
-    constexpr Color getcolor(int pt)
+    constexpr Color get_color(int pt)
     {
         return (Color)(pt / 6);
     }
 
-    constexpr PieceList getpiece(PieceType pt)
+    constexpr PieceList get_piece(PieceType pt)
     {
 		return (PieceList)(pt % 6);
 	}
 
-    constexpr PieceList getpiece(int pt)
+    constexpr PieceList get_piece(int pt)
     {
         return (PieceList)(pt % 6);
     }
