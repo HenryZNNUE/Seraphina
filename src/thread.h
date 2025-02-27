@@ -7,12 +7,12 @@
 
 #pragma once
 
-#include <thread>
-#include <vector>
 #include <atomic>
-#include <mutex>
 #include <condition_variable>
 #include <functional>
+#include <mutex>
+#include <thread>
+#include <vector>
 
 namespace Seraphina
 {
@@ -53,55 +53,7 @@ namespace Seraphina
 	using Std_Thread = std::thread;
 #endif
 
-	struct Thread
-	{
-		int depth = 0;
-		int seldepth = 0;
-		int multipv = 0;
-
-		uint64_t nodes = 0;
-		uint64_t tbhits = 0;
-
-		bool searching = true;
-		bool exit = false;
-
-		std::mutex mutex;
-		std::condition_variable cv;
-
-		Board board;
-
-		Std_Thread std_thread;
-
-		void idle_loop()
-		{
-			while (true)
-			{
-				std::unique_lock lock(mutex);
-				searching = false;
-				cv.notify_one();
-				cv.wait(lock, [&] { return searching; });
-
-				if (exit)
-				{
-					break;
-				}
-
-				lock.unlock();
-
-				// Do Search here
-			}
-		}
-
-		Thread() : std_thread([this] { idle_loop(); })
-		{
-
-		}
-
-		~Thread()
-		{
-			std_thread.join();
-		}
-	};
+	typedef struct Thread Thread;
 
 	class ThreadPool
 	{
