@@ -10,56 +10,6 @@
 
 namespace Seraphina
 {
-	struct Thread
-	{
-		int depth = 0;
-		int seldepth = 0;
-		int multipv = 0;
-
-		uint64_t nodes = 0;
-		uint64_t tbhits = 0;
-
-		bool searching = true;
-		bool exit = false;
-
-		std::mutex mutex;
-		std::condition_variable cv;
-
-		Board board;
-
-		Std_Thread std_thread;
-
-		void idle_loop()
-		{
-			while (true)
-			{
-				std::unique_lock lock(mutex);
-				searching = false;
-				cv.notify_one();
-				cv.wait(lock, [&] { return searching; });
-
-				if (exit)
-				{
-					break;
-				}
-
-				lock.unlock();
-
-				// Do Search here
-			}
-		}
-
-		Thread() : std_thread([this] { idle_loop(); })
-		{
-
-		}
-
-		~Thread()
-		{
-			std_thread.join();
-		}
-	};
-
 	uint64_t ThreadPool::get_nodes()
 	{
 		uint64_t n = 0;

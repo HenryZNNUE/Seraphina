@@ -1,4 +1,3 @@
-# General
 EXE     = Seraphina-$(VERSION)-$(ARCH)
 CXXSRC  = bitboard.cpp evaluate.cpp movegen.cpp movepick.cpp nnue.cpp \
 		  search.cpp selfplay/selfplay.cpp Seraphina.cpp thread.cpp tt.cpp uci.cpp
@@ -10,7 +9,6 @@ SERA_NNUE = $(shell grep -oP 'Seraphina_NNUE "\K[^"]+' nnue.h)
 EVALFILE = $(SERA_NNUE)
 PARAMS  = -DVERSION=\"$(VERSION)\" -DEVALFILE=\"$(EVALFILE)\"
 
-# Flags
 STD    = -std=c++17
 LIBS   = -pthread
 # WARN   = -Wall -Wextra -Wshadow
