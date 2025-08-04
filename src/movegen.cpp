@@ -46,11 +46,11 @@ namespace Seraphina
 
 			if (mt == ENPASSNT)
 			{
-				Direction push = (pov == Color::WHITE ? Direction::NORTH : Direction::SOUTH);
+				int path = to - board.where_to_push();
 
-				if ((from ^ to) == 16 && (Bitboards::getPawnAttacks(pov, (to - push)) & board.getPieceBB(make_piece(~pov, PieceList::PAWN))))
+				if ((from ^ to) == 16 && (Bitboards::getPawnAttacks(pov, path) & board.getPieceBB(make_piece(~pov, PieceList::PAWN))))
 				{
-					history.ENPASSNT = to - push;
+					history.ENPASSNT = path;
 
 					board.removePiece(from);
 					board.replacePiece(history.ENPASSNT, pt);
@@ -446,8 +446,8 @@ void MoveList::generatePawn(Board& board, Seraphina::MoveType mt, Bitboard& targ
 	Seraphina::Color pov = board.get_pov();
 	int xpov = ~pov;
 	Seraphina::PieceType pt = Seraphina::make_piece(pov, Seraphina::PieceList::PAWN);
-	Seraphina::Direction push = (pov == Seraphina::Color::WHITE ? Seraphina::Direction::NORTH : Seraphina::Direction::SOUTH);
-	Seraphina::Direction push2 = (Seraphina::Direction)(pov == Seraphina::Color::WHITE ? (Seraphina::Direction::NORTH << 1) : (Seraphina::Direction::SOUTH * 2));
+	int push = board.where_to_push();
+	int push2 = (push << 1);
 	Seraphina::Direction left = (pov == Seraphina::Color::WHITE ? Seraphina::Direction::NORTH_WEST : Seraphina::Direction::SOUTH_EAST);
 	Seraphina::Direction right = (pov == Seraphina::Color::WHITE ? Seraphina::Direction::NORTH_EAST : Seraphina::Direction::SOUTH_WEST);
 

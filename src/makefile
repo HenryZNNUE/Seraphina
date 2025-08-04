@@ -19,6 +19,7 @@ M64     = -m64 -mpopcnt
 MSSE2   = $(M64) -msse -msse2
 MSSSE3  = $(MSSE2) -mssse3
 MAVX2   = $(MSSSE3) -msse4.1 -mbmi -mfma -mavx2
+MAVXVNNI = $(MAVX2) -avxvnni
 MAVX512 = $(MAVX2) -mavx512f -mavx512bw
 MAVX256VNNI = $(MAVX512) -mavx512vnni -mavx512dq -mavx512vl -mprefer-vector-width=256
 MAVX512VNNI = $(MAVX512) -mavx512vnni -mavx512dq -mavx512vl -mprefer-vector-width=512
@@ -45,13 +46,16 @@ else ifeq ($(findstring ssse3, $(ARCH)), ssse3)
 	CXXFLAGS = $(FLAGS) $(MSSSE3)
 else ifeq ($(findstring avx2, $(ARCH)), avx2)
 	CXXFLAGS = $(FLAGS) $(MAVX2)
+else ifeq ($(findstring avxvnni, $(ARCH)), avxvnni)
+	CXXFLAGS += -DVNNI
+	CXXFLAGS = $(FLAGS) $(MAVXVNNI)
 else ifeq ($(findstring avx512, $(ARCH)), avx512)
 	CXXFLAGS = $(FLAGS) $(MAVX512)
 else ifeq ($(findstring vnni256, $(ARCH)), vnni256)
-	CXXFLAGS += -DVNNI256
+	CXXFLAGS += -DVNNI
 	CXXFLAGS = $(FLAGS) $(MAVX256VNNI)
 else ifeq ($(findstring vnni512, $(ARCH)), vnni512)
-	CXXFLAGS += -DVNNI512
+	CXXFLAGS += -DVNNI
 	CXXFLAGS = $(FLAGS) $(MAVX512VNNI)
 endif
 

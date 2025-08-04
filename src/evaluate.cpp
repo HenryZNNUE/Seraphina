@@ -21,18 +21,27 @@ namespace Seraphina
 
 	int Evaluate(Board& board, Move& move)
 	{
-		for (int pov = Color::WHITE; pov <= Color::BLACK; ++pov)
+		if (!board.acc->computed[Color::WHITE])
 		{
-			if (!board.acc->computed[pov])
+			if (board.acc->updatable(board.acc, move, Color::WHITE))
 			{
-				if (board.acc->updatable(board.acc, move, pov))
-				{
-					NNUE::update_accumulator(board, move, pov);
-				}
-				else
-				{
-					board.accRT->ApplyRefresh(board, pov);
-				}
+				NNUE::update_accumulator(board, move, Color::WHITE);
+			}
+			else
+			{
+				board.accRT->ApplyRefresh(board, Color::WHITE);
+			}
+		}
+
+		if (!board.acc->computed[Color::BLACK])
+		{
+			if (board.acc->updatable(board.acc, move, Color::BLACK))
+			{
+				NNUE::update_accumulator(board, move, Color::BLACK);
+			}
+			else
+			{
+				board.accRT->ApplyRefresh(board, Color::BLACK);
 			}
 		}
 
@@ -49,6 +58,7 @@ namespace Seraphina
 	{
 		board.acc = static_cast<NNUE::Accumulator*>(NNUE::aligned_malloc(sizeof(NNUE::Accumulator), 64));
 		Color pov = board.get_pov();
+		board.printBoard();
 
 		NNUE::reset_accumulator(board, Color::WHITE);
 		NNUE::reset_accumulator(board, Color::BLACK);
@@ -65,6 +75,6 @@ namespace Seraphina
 
 		std::cout << "Final Evaluation " << cp(board, eval) * 0.01 << "\n";
 
-		free(board.acc);
+		_aligned_free(board.acc);
 	}
 }

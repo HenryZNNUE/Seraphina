@@ -15,9 +15,11 @@ void recipe()
 	r << "	cd ..\n";
 	r << "	make -j" << threads << " build ARCH=vnni512\n";
 	r << "	echo -e \"\\n\"\n";
+	r << "	make -j" << threads << " build ARCH=vnni256\n";
+	r << "	echo -e \"\\n\"\n";
 	r << "	make -j" << threads << " build ARCH=avx512\n";
 	r << "	echo -e \"\\n\"\n";
-	r << "	make -j" << threads << " build ARCH=vnni256\n";
+	r << "	make -j" << threads << " build ARCH=avxvnni\n";
 	r << "	echo -e \"\\n\"\n";
 	r << "	make -j" << threads << " build ARCH=avx2\n";
 	r << "	return 0\n";

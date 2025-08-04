@@ -5,13 +5,16 @@
 // Programmed By Henry Z
 // Special thanks to Luecx, Zomby, Slender(rafid-dev) and other Openbench Discord Members for their generous help of Seraphina NNUE training
 
-#ifdef _WIN64 // Microsoft Windows Only
-#include <Windows.h> // SetConsoleTextAttribute();
-#endif // Microsoft Windows & Linux
+#ifdef _WIN64
+#include <Windows.h>
+#endif
 
 #include <stdio.h>
 #include <chrono>
 
+#include "bitboard.h"
+#include "evaluate.h"
+#include "nnue.h"
 #include "uci.h"
 
 namespace Seraphina
@@ -34,16 +37,24 @@ namespace Seraphina
             << " __\n";
         std::cout
             << "(_  _ _ _  _ |_ . _  _\n";
-        std::cout << Bold(unix_style) << Cyan(unix_style)
-            << "__)(-| (_||_)| )|| )(_|   "
+        std::cout << "__)(-| (_||_)| )|| )(_|   "
             << Blue(unix_style) << Version << " by " << Author << "\n";
         std::cout << Bold(unix_style) << Cyan(unix_style)
             << "          |\n\n" << Vanilla(unix_style);
+    }
+
+    void Eval_Test()
+    {
+        Board board;
+        board.parseFEN("N7/1p1b1k2/p5r1/4RppQ/8/3P4/PPP2PPP/R6K b - - 0 29");
+        Seraphina::NNUE::init();
+        TraceEval(board);
     }
 }
 
 int main()
 {
     Seraphina::UI(); // Print Engine's Name, Logo & Version
+    Seraphina::Eval_Test();
     std::cin.get();
 }

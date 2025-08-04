@@ -240,6 +240,7 @@ namespace Seraphina
         }
 
         Bitboard shift(Direction D, Bitboard bb);
+        Bitboard shift(int D, Bitboard bb);
 
         std::string squaretostr(Square s);
         std::string squaretostr(int s);
@@ -577,12 +578,6 @@ public:
 		return castlingRookSquare[castlingtype];
 	}
 
-	inline int getPieceCount(Seraphina::PieceList p)
-	{
-		return (pieceCount[Seraphina::make_piece(Seraphina::Color::WHITE, p)]
-            + pieceCount[Seraphina::make_piece(Seraphina::Color::BLACK, p)]);
-	}
-
     inline int getNonPawns()
     {
         return(nonPawns[Seraphina::Color::WHITE] + nonPawns[Seraphina::Color::BLACK]);
@@ -600,6 +595,7 @@ public:
     void setThreats();
 
 	int getPieceCount(Seraphina::PieceType pt) const;
+    int getPieceCount(Seraphina::PieceList p) const;
     int getPieceValues(Seraphina::Color pov) const;
     void countPiece();
 	void countPieceValues();
@@ -614,7 +610,7 @@ public:
     void addCountValues(Seraphina::PieceType pt, Seraphina::Color c);
     void removeCountValues(Seraphina::PieceType pt, Seraphina::Color c);
 
-    void parseFEN(char* fen);
+    void parseFEN(const char* fen);
     void BoardtoFEN(char* fen);
 
     Seraphina::Square getKingSquare(Seraphina::Color c) const;

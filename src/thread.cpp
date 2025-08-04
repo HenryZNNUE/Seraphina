@@ -99,7 +99,7 @@ namespace Seraphina
 
 	void ThreadPool::kill_threads()
 	{
-		for (int i = 0; i < num; i++)
+		for (int i = 0; i < num; ++i)
 		{
 			delete threads[i];
 		}

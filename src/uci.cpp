@@ -31,11 +31,11 @@ namespace Seraphina
 
 	WDLParams WDL(Board& board)
 	{
-		int material = board.getPieceCount(Seraphina::PieceType::WHITE_PAWN) + board.getPieceCount(Seraphina::PieceType::BLACK_PAWN)
-			+ 3 * (board.getPieceCount(Seraphina::PieceType::WHITE_KNIGHT) + board.getPieceCount(Seraphina::PieceType::BLACK_KNIGHT))
-			+ 3 * (board.getPieceCount(Seraphina::PieceType::WHITE_BISHOP) + board.getPieceCount(Seraphina::PieceType::BLACK_BISHOP))
-			+ 5 * (board.getPieceCount(Seraphina::PieceType::WHITE_ROOK) + board.getPieceCount(Seraphina::PieceType::BLACK_ROOK))
-			+ 9 * (board.getPieceCount(Seraphina::PieceType::WHITE_QUEEN) + board.getPieceCount(Seraphina::PieceType::BLACK_QUEEN));
+		int material = board.getPieceCount(Seraphina::PieceList::PAWN)
+			+ 3 * board.getPieceCount(Seraphina::PieceList::KNIGHT)
+			+ 3 * board.getPieceCount(Seraphina::PieceList::BISHOP)
+			+ 5 * board.getPieceCount(Seraphina::PieceList::ROOK)
+			+ 9 * board.getPieceCount(Seraphina::PieceList::QUEEN);
 
 		double m = std::clamp(material, 17, 78) / 58.0;
 

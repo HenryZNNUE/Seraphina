@@ -112,9 +112,7 @@ namespace Seraphina
 	// There are 2 types of set move, this one refers to non-capture moves
 	inline Move setMove(const Square& from, const Square& to, const PieceType& pt, const MoveType& mt)
 	{
-		Move move{ 0 }; // Initialize move's block of memory
-
-		// use "set" functions defined in movegen.h to fill the move-related information
+		Move move = 0;
 		setFrom(move, from);
 		setTo(move, to);
 		setPieceType(move, pt);
@@ -127,9 +125,7 @@ namespace Seraphina
 	// There are 2 types of set move, this one refers to non-capture moves
 	inline Move setMove(const int& from, const int& to, const int& pt, const MoveType& mt)
 	{
-		Move move{ 0 }; // Initialize move's block of memory
-
-		// use "set" functions defined in movegen.h to fill the move-related information
+		Move move = 0;
 		setFrom(move, from);
 		setTo(move, to);
 		setPieceType(move, pt);
@@ -142,9 +138,7 @@ namespace Seraphina
 	// There are 2 types of set move, this one refers to capture / promotion moves
 	inline Move setMove(const Square& from, const Square& to, const PieceType& pt, const MoveType& mt, const PieceType& cappromo)
 	{
-		Move move{ 0 }; // Initialize move's block of memory
-
-		// use "set" functions defined in movegen.h to fill the move-related information
+		Move move = 0;
 		setFrom(move, from);
 		setTo(move, to);
 		setPieceType(move, pt);
@@ -158,9 +152,7 @@ namespace Seraphina
 	// There are 2 types of set move, this one refers to capture / promotion moves
 	inline Move setMove(const int& from, const int& to, const int& pt, const MoveType& mt, const int& cappromo)
 	{
-		Move move{ 0 }; // Initialize move's block of memory
-
-		// use "set" functions defined in movegen.h to fill the move-related information
+		Move move = 0;
 		setFrom(move, from);
 		setTo(move, to);
 		setPieceType(move, pt);

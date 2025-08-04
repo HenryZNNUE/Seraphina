@@ -23,48 +23,80 @@
 using vec_t = __m512i;
 #define BIT_ALIGNMENT 512
 #define vec_load(a) _mm512_load_si512(a)
+#define vec_loadu(a) _mm512_loadu_si512(a)
 #define vec_store(a, b) _mm512_store_si512(a, b)
+#define vec_storeu(a, b) _mm512_storeu_si512(a, b)
 #define vec_add_16(a, b) _mm512_add_epi16(a, b)
 #define vec_sub_16(a, b) _mm512_sub_epi16(a, b)
 #define vec_mul_16(a, b) _mm512_mullo_epi16(a, b)
 #define vec_zero() _mm512_setzero_epi32()
 #define vec_setzero() _mm512_setzero_si512()
-#define vec_set_16(a) _mm512_set1_epi16(a)
-#define vec_set_32(a) _mm512_set1_epi32(a)
+#define vec_set1_8(a) _mm512_set1_epi8(a)
+#define vec_set1_16(a) _mm512_set1_epi16(a)
+#define vec_set1_32(a) _mm512_set1_epi32(a)
+#define vec_set_32(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p) _mm512_set_epi32(a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p)
+#define vec_max_8(a, b) _mm512_max_epi8(a, b)
 #define vec_max_16(a, b) _mm512_max_epi16(a, b)
 #define vec_max_32(a, b) _mm512_max_epi32(a, b)
+#define vec_min_8(a, b) _mm512_min_epi8(a, b)
+#define vec_min_16(a, b) _mm512_min_epi16(a, b)
 #define vec_min_32(a, b) _mm512_min_epi32(a, b)
 #define vec_cvt_8(a) _mm512_cvtepi32_epi8(a)
+#define vec_srli_16(a, b) _mm512_srli_epi16(a, b)
+#define vec_srli_32(a, b) _mm512_srli_epi32(a, b)
 #define vec_srai_16(a, b) _mm512_srai_epi16(a, b)
+#define vec_srai_32(a, b) _mm512_srai_epi32(a, b)
 #define vec_packs_16(a, b) _mm512_packs_epi16(a, b)
+#define vec_packus_16(a, b) _mm512_packus_epi16(a, b)
+#define vec_packs_32(a, b) _mm512_packs_epi32(a, b)
+#define vec_packus_32(a, b) _mm512_packus_epi32(a, b)
+#define vec_permute_32(a, b) _mm512_permutexvar_epi32(a, b)
 #define REG_NUM 16
 #define CHUNK_SIZE 32
 #define vec_nnz(a) _mm512_cmpgt_epi32_mask(a, _mm512_setzero_si512())
+
+const vec_t permute_idx = vec_set_32(15, 7, 14, 6, 13, 5, 12, 4, 11, 3, 10, 2, 9, 1, 8, 0);
 
 #elif defined(__AVX2__) || defined(__AVX__)
 using vec_t = __m256i;
 #define BIT_ALIGNMENT 256
 #define vec_load(a) _mm256_load_si256(a)
+#define vec_loadu(a) _mm256_loadu_si256(a)
 #define vec_store(a, b) _mm256_store_si256(a, b)
+#define vec_storeu(a, b) _mm256_storeu_si256(a, b)
 #define vec_add_16(a, b) _mm256_add_epi16(a, b)
 #define vec_sub_16(a, b) _mm256_sub_epi16(a, b)
 #define vec_mul_16(a, b) _mm256_mullo_epi16(a, b)
 #define vec_zero() _mm256_setzero_si256()
 #define vec_setzero() _mm256_setzero_si256()
-#define vec_set_16(a) _mm256_set1_epi16(a)
-#define vec_set_32(a) _mm256_set1_epi32(a)
+#define vec_set1_8(a) _mm256_set1_epi8(a)
+#define vec_set1_16(a) _mm256_set1_epi16(a)
+#define vec_set1_32(a) _mm256_set1_epi32(a)
+#define vec_set_32(a, b, c, d, e, f, g, h) _mm256_set_epi32(a, b, c, d, e, f, g, h)
+#define vec_max_8(a, b) _mm256_max_epi8(a, b)
 #define vec_max_16(a, b) _mm256_max_epi16(a, b)
 #define vec_max_32(a, b) _mm256_max_epi32(a, b)
+#define vec_min_8(a, b) _mm256_min_epi8(a, b)
+#define vec_min_16(a, b) _mm256_min_epi16(a, b)
 #define vec_min_32(a, b) _mm256_min_epi32(a, b)
+#define vec_srli_16(a, b) _mm256_srli_epi16(a, b)
+#define vec_srli_32(a, b) _mm256_srli_epi32(a, b)
 #define vec_srai_16(a, b) _mm256_srai_epi16(a, b)
+#define vec_srai_32(a, b) _mm256_srai_epi32(a, b)
 #define vec_packs_16(a, b) _mm256_packs_epi16(a, b)
+#define vec_packus_16(a, b) _mm256_packus_epi16(a, b)
+#define vec_packs_32(a, b) _mm256_packs_epi32(a, b)
+#define vec_packus_32(a, b) _mm256_packus_epi32(a, b)
+#define vec_permute_32(a, b) _mm256_permutevar8x32_epi32(a, b)
 #define REG_NUM 16
 #define CHUNK_SIZE 32
 #define vec_nnz(a) _mm256_movemask_ps(_mm256_castsi256_ps(_mm256_cmpgt_epi32(a, _mm256_setzero_si256())))
+
+const vec_t permute_idx = vec_set_32(7, 3, 6, 2, 5, 1, 4, 0);
 #endif
 
 // Seraphina NNUE Format: Seraphina-[SHA256 first 12 digits]-version.nnue
-#define Seraphina_NNUE "Seraphina-0a877e853540.nnue"
+#define Seraphina_NNUE "Seraphina-7c9799958d71.nnue"
 
 // 3072 -> 16 -> 32 -> 1 NNUE Structure
 #define KING_BUCKETS 32
@@ -75,23 +107,9 @@ using vec_t = __m256i;
 #define L3 32
 #define OUTPUT 1
 
+#define QB1 6
+
 #define NNUE_SIZE ((FEATURES * HIDDEN + HIDDEN) * sizeof(int16_t) + (L1 * L2 + L2 * L3 + L3) * sizeof(int8_t) + (L2 + L3 + 1) * sizeof(int32_t))
-
-#ifdef DUAL_NNUE
-#define Seraphina_NNUE_SMALL "Seraphina-s-v1.nnue"
-
-#ifdef _MSC_VER
-const unsigned char        gNNUESmallData[1] = { 0x0 };
-const unsigned char* const gNNUESmallEnd = &gEmbeddedNNUESmallData[1];
-const unsigned int         gNNUESmallSize = 1;
-#else
-INCBIN(NNUESmall, Seraphina_NNUE_SMALL);
-#endif
-
-// NNUE Dual NNUE 128 -> 16 -> 32 -> 1
-#define HIDDEN_SMALL 64
-#define L1_SMALL (HIDDEN_SMALL * 2)
-#endif
 
 class Board;
 
@@ -138,8 +156,8 @@ namespace Seraphina
         void load_external(std::string& path);
         void update_accumulator(Board& board, const Move& move, int c);
         void reset_accumulator(Board& board, int c);
-        void L1_forward(int8_t* input, uint8_t* output);
-        void L2_forward(uint8_t* input, uint8_t* output);
+        void L1_forward(int8_t* input, int32_t* output);
+        void L2_forward(uint8_t* input, int32_t* output);
         void L3_forward(uint8_t* input, int32_t* output);
         int forward(Accumulator& acc, Color c);
         int predict(Board& board);

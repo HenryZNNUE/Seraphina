@@ -145,6 +145,21 @@ namespace Seraphina
                 : 0;
         }
 
+        Bitboard shift(int D, Bitboard bb)
+        {
+            return D == Direction::NORTH ? bb << 8
+                : D == Direction::SOUTH ? bb >> 8
+                : D == Direction::NORTH + Direction::NORTH ? bb << 16
+                : D == Direction::SOUTH + Direction::SOUTH ? bb >> 16
+                : D == Direction::EAST ? (bb & ~FileHBB) << 1
+                : D == Direction::WEST ? (bb & ~FileABB) >> 1
+                : D == Direction::NORTH_EAST ? (bb & ~FileHBB) << 9
+                : D == Direction::NORTH_WEST ? (bb & ~FileABB) << 7
+                : D == Direction::SOUTH_EAST ? (bb & ~FileHBB) >> 7
+                : D == Direction::SOUTH_WEST ? (bb & ~FileABB) >> 9
+                : 0;
+        }
+
         std::string squaretostr(Square s)
         {
             std::string str = "";
@@ -593,6 +608,12 @@ int Board::getPieceCount(Seraphina::PieceType pt) const
 	return pieceCount[pt];
 }
 
+int Board::getPieceCount(Seraphina::PieceList p) const
+{
+    return (pieceCount[Seraphina::make_piece(Seraphina::Color::WHITE, p)]
+        + pieceCount[Seraphina::make_piece(Seraphina::Color::BLACK, p)]);
+}
+
 int Board::getPieceValues(Seraphina::Color c) const
 {
     return nonPawns[c];
@@ -678,7 +699,7 @@ void Board::removeCountValues(Seraphina::PieceType pt, Seraphina::Color c)
 	nonPawns[c] -= PieceValue[pt];
 }
 
-void Board::parseFEN(char* fen)
+void Board::parseFEN(const char* fen)
 {
     ClearBoard();
 	int sq = Seraphina::Square::SQ_A8;
@@ -1004,23 +1025,26 @@ void Board::printBoard()
 
 void Board::ClearBoard()
 {
-    // Clear the board
-    for (int sq = 0; sq < SQ_NUM; ++sq)
+    for (int sq = 0; sq < SQ_NUM; sq += 4)
     {
 		board[sq] = Seraphina::PieceType::NO_PIECETYPE;
+        board[sq + 1] = Seraphina::PieceType::NO_PIECETYPE;
+        board[sq + 2] = Seraphina::PieceType::NO_PIECETYPE;
+        board[sq + 3] = Seraphina::PieceType::NO_PIECETYPE;
 	}
 
-	// Clear the piece bitboards
-    for (int pt = 0; pt < 12; ++pt)
+    for (int p = 0; p < 6; ++p)
     {
-		pieceBB[pt] = 0ULL;
-	}
-
-	// Clear the occupancy bitboard
-    for (int c = 0; c < 3; ++c)
-    {
-        occBB[c] = 0ULL;
+        pieceBB[p] = 0ULL;
+        pieceBB[p + 6] = 0ULL;
+        pieceCount[p] = 0;
+        pieceCount[p + 6] = 0;
+        threatenedBy[p] = 0ULL;
     }
+
+    occBB[Seraphina::Color::WHITE] = 0ULL;
+    occBB[Seraphina::Color::BLACK] = 0ULL;
+    occBB[Seraphina::Color::NO_COLOR] = 0ULL;
 
 	nonPawns[0] = 0;
 	nonPawns[1] = 0;
@@ -1037,18 +1061,12 @@ void Board::ClearBoard()
 
     threatened = 0ULL;
 
-    for (int p = 0; p < 6; ++p)
-    {
-        pieceCount[p] = 0;
-        threatenedBy[p] = 0ULL;
-    }
-
     castling = 0;
 
-    for (int i = 0; i < 4; ++i)
-    {
-		castlingRookSquare[i] = 0;
-    }
+    castlingRookSquare[0] = 0;
+    castlingRookSquare[1] = 0;
+    castlingRookSquare[2] = 0;
+    castlingRookSquare[3] = 0;
 
     KingSQ = 0;
     movenum = 0;

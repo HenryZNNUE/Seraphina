@@ -8,7 +8,7 @@
 #pragma once
 
 #include <algorithm>
-#include <cassert>
+#include <assert.h>
 #include <chrono>
 #include <cstdint>
 #include <iostream>
@@ -18,13 +18,8 @@
 #include <intrin.h>
 #endif
 
-// Engine Name
 #define Name "Seraphina"
-
-// Engine Official Release Version
 #define Version "v1"
-
-// Author Name
 #define Author "Henry Z"
 
 #define Bold(unix) (unix ? "\033[1m" : "")
@@ -32,42 +27,29 @@
 #define Cyan(unix) (unix ? "\033[36m" : "")
 #define Vanilla(unix) (unix ? "\033[0m" : "")
 
-// Square Number of the chess board
 #define SQ_NUM 64
-
 #define MAX_MOVES 256
 #define MAX_PLY 256
 #define MAX_THREADS 1024
 
-// Start Position FEN
 #define START_FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 constexpr char PIECETYPE_CHARS[] = "PNBRQKpnbrqk ";
 constexpr char PIECE_CHARS[] = "PNBRQK";
 
-//  Unsigned 64 bits
 using U64 = uint64_t;
-
-// Divided Definition in order to make codes cleaner
 using Bitboard = uint64_t;
-
-// Use Unsigned 32 bits to store move-related information
 using Move = uint32_t;
-
-// Use Signed 8 bits to store score information
 using Score = int8_t;
-
 using Time = std::chrono::milliseconds::rep;
 
 namespace Seraphina
 {
-    // Colors on the board
     enum Color : int
     {
         WHITE, BLACK, NO_COLOR
     };
 
-	// Define the chess board
 	enum Square : int
 	{
         SQ_A1, SQ_B1, SQ_C1, SQ_D1, SQ_E1, SQ_F1, SQ_G1, SQ_H1,
@@ -81,25 +63,21 @@ namespace Seraphina
         NO_SQ
 	};
 
-    // File A ~ H
     enum File : int
     {
         FILE_A, FILE_B, FILE_C, FILE_D, FILE_E, FILE_F, FILE_G, FILE_H, NO_FILE
     };
 
-    // Rank 1 ~ 8
     enum Rank : int
     {
         RANK_1, RANK_2, RANK_3, RANK_4, RANK_5, RANK_6, RANK_7, RANK_8, NO_RANK
     };
 
-    // Piece List
     enum PieceList : int
     {
         PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING, NO_PIECE
     };
 
-    // Piece Type with Colors
     enum PieceType : int
     {
         WHITE_PAWN, WHITE_KNIGHT, WHITE_BISHOP, WHITE_ROOK, WHITE_QUEEN, WHITE_KING,
@@ -117,13 +95,11 @@ namespace Seraphina
 		ALL_CASTLING = 15
     };
 
-    // Move Types
     enum MoveType : int
     {
 		NORMAL, SHORT_CASTLE, LONG_CASTLE, CAPTURE, ENPASSNT, PROMOTION, PROMOTION_CAPTURE
     };
 
-    // Values for Search
     enum Value : int
     {
         VALUE_ZERO = 0,
@@ -131,8 +107,6 @@ namespace Seraphina
 		VALUE_MATE = 32000,
     };
 
-    // Directions are used to generate XRay attacks
-    // Sometimes we use file and rank hashs to generate XRay attacks
     enum Direction : int
     {
         NORTH = 8,
@@ -166,24 +140,6 @@ namespace Seraphina
 
     constexpr char piece_to_char(PieceType pt)
     {
-        /*
-        if (pt == WHITE_PAWN) return 'P';
-        if (pt == WHITE_KNIGHT) return 'N';
-        if (pt == WHITE_BISHOP) return 'B';
-        if (pt == WHITE_ROOK) return 'R';
-        if (pt == WHITE_QUEEN) return 'Q';
-        if (pt == WHITE_KING) return 'K';
-
-        if (pt == BLACK_PAWN) return 'p';
-        if (pt == BLACK_KNIGHT) return 'n';
-        if (pt == BLACK_BISHOP) return 'b';
-        if (pt == BLACK_ROOK) return 'r';
-        if (pt == BLACK_QUEEN) return 'q';
-        if (pt == BLACK_KING) return 'k';
-
-        if (pt == NO_PIECETYPE) return ' ';
-        */
-
         return PIECETYPE_CHARS[pt];
 	}
 
@@ -201,15 +157,6 @@ namespace Seraphina
 
     constexpr char piece_to_char_no_pov(PieceList p)
     {
-        /*
-        if (p == PAWN) return 'P';
-        if (p == KNIGHT) return 'N';
-        if (p == BISHOP) return 'B';
-        if (p == ROOK) return 'R';
-        if (p == QUEEN) return 'Q';
-        if (p == KING) return 'K';
-        */
-
         return PIECETYPE_CHARS[p];
     }
 
